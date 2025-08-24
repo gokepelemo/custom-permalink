@@ -3,7 +3,7 @@
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
 Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible.
-Version: 1.0.3
+Version: 1.0.4
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -30,6 +30,11 @@ class CustomPermalinkDomain {
     private $plugin_slug = 'custom-permalink-domain';
     private $is_network_admin = false;
     
+    // Cache frequently accessed options to reduce database queries
+    private $custom_domain_cache = null;
+    private $content_types_cache = null;
+    private $network_settings_cache = null;
+    
     public function __construct() {
         // Check if we're in network admin
         $this->is_network_admin = is_multisite() && is_network_admin();
@@ -52,8 +57,19 @@ class CustomPermalinkDomain {
         add_action('network_admin_notices', array($this, 'network_admin_notices'));
         add_action('wp_ajax_cpd_test_urls', array($this, 'ajax_test_urls'));
         
-        // Add frontend URL filtering for meta tags and structured data
-        if (!is_admin()) {
+        // Only register frontend filters if we have a custom domain and we're not in admin
+        $this->register_frontend_filters();
+        
+        // Register permalink filters based on configuration
+        $this->register_permalink_filters();
+    }
+    
+    /**
+     * Register frontend-only filters (SEO, meta tags, etc.)
+     */
+    private function register_frontend_filters() {
+        // Only add frontend filters if not in admin and we have a custom domain
+        if (!is_admin() && $this->get_custom_domain()) {
             add_action('wp_head', array($this, 'output_custom_canonical'), 1);
             add_filter('wpseo_canonical', array($this, 'change_permalink_domain')); // Yoast SEO
             add_filter('wpseo_opengraph_url', array($this, 'change_permalink_domain')); // Yoast OG
@@ -69,92 +85,192 @@ class CustomPermalinkDomain {
             add_filter('the_content', array($this, 'replace_content_urls'), 999);
             add_filter('widget_text', array($this, 'replace_content_urls'), 999);
         }
-        
-        // Apply permalink filters if custom domain is set
-        $custom_domain = get_option($this->option_name);
-        if (!empty($custom_domain)) {
-            $content_types = get_option($this->option_name . '_types', array(
-                'posts' => 1,
-                'pages' => 1,
-                'categories' => 1,
-                'tags' => 1,
-                'authors' => 1,
-                'attachments' => 1
-            ));
-            
-            if (!empty($content_types['posts'])) {
-                add_filter('post_link', array($this, 'change_permalink_domain'));
-            }
-            if (!empty($content_types['pages'])) {
-                add_filter('page_link', array($this, 'change_permalink_domain'));
-            }
-            if (!empty($content_types['categories'])) {
-                add_filter('category_link', array($this, 'change_permalink_domain'));
-            }
-            if (!empty($content_types['tags'])) {
-                add_filter('tag_link', array($this, 'change_permalink_domain'));
-            }
-            if (!empty($content_types['authors'])) {
-                add_filter('author_link', array($this, 'change_permalink_domain'));
-            }
-            if (!empty($content_types['attachments'])) {
-                add_filter('attachment_link', array($this, 'change_permalink_domain'));
-            }
-            
-            // Add comprehensive URL filtering for headers, feeds, and other outputs
-            // Note: home_url and site_url filters have admin context checks to prevent
-            // interference with wp-admin and wp-json requests (WP GraphQL compatibility)
-            add_filter('home_url', array($this, 'change_home_url_for_frontend'), 10, 4);
-            add_filter('site_url', array($this, 'change_site_url_for_frontend'), 10, 4);
-            
-            // RSS/Atom feeds
-            add_filter('feed_link', array($this, 'change_permalink_domain'));
-            add_filter('category_feed_link', array($this, 'change_permalink_domain'));
-            add_filter('author_feed_link', array($this, 'change_permalink_domain'));
-            add_filter('tag_feed_link', array($this, 'change_permalink_domain'));
-            add_filter('search_feed_link', array($this, 'change_permalink_domain'));
-            
-            // Archives and other special pages
-            add_filter('year_link', array($this, 'change_permalink_domain'));
-            add_filter('month_link', array($this, 'change_permalink_domain'));
-            add_filter('day_link', array($this, 'change_permalink_domain'));
-            
-            // REST API - special handling to avoid CORS issues with WP GraphQL and admin contexts
-            // Uses dedicated function with admin context checks
-            add_filter('rest_url', array($this, 'change_rest_url_frontend_only'));
-            
-            // Comments
-            add_filter('get_comments_link', array($this, 'change_permalink_domain'));
-            
-            // Search
-            add_filter('search_link', array($this, 'change_permalink_domain'));
-            
-            // Canonical and meta URLs (for headers)
-            add_filter('get_canonical_url', array($this, 'change_permalink_domain'));
-            add_filter('wp_get_canonical_url', array($this, 'change_permalink_domain'));
-            
-            // Pagination links
-            add_filter('paginate_links', array($this, 'change_paginate_links'));
-            
-            // WordPress.org specific filters for sitemaps
-            add_filter('wp_sitemaps_posts_entry', array($this, 'change_sitemap_entry'), 10, 3);
-            add_filter('wp_sitemaps_taxonomies_entry', array($this, 'change_sitemap_entry'), 10, 3);
-            add_filter('wp_sitemaps_users_entry', array($this, 'change_sitemap_entry'), 10, 3);
-            
-            // Algolia Search plugin integration - ensure custom permalinks are indexed correctly
-            // These filters run during indexing operations to provide correct URLs to search engines
-            add_filter('algolia_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
-            add_filter('algolia_searchable_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
-            add_filter('algolia_term_record', array($this, 'fix_algolia_term_permalink'), 10, 2);
-            add_filter('algolia_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
-            add_filter('algolia_searchable_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
-            add_filter('algolia_term_record', array($this, 'fix_algolia_term_permalink'), 10, 2);
+    }
+    
+    /**
+     * Register permalink filters based on configuration
+     */
+    private function register_permalink_filters() {
+        $custom_domain = $this->get_custom_domain();
+        if (empty($custom_domain)) {
+            return;
         }
+        
+        $content_types = $this->get_content_types();
+        
+        // Register content type specific filters
+        if (!empty($content_types['posts'])) {
+            add_filter('post_link', array($this, 'change_permalink_domain'));
+        }
+        if (!empty($content_types['pages'])) {
+            add_filter('page_link', array($this, 'change_permalink_domain'));
+        }
+        if (!empty($content_types['categories'])) {
+            add_filter('category_link', array($this, 'change_permalink_domain'));
+        }
+        if (!empty($content_types['tags'])) {
+            add_filter('tag_link', array($this, 'change_permalink_domain'));
+        }
+        if (!empty($content_types['authors'])) {
+            add_filter('author_link', array($this, 'change_permalink_domain'));
+        }
+        if (!empty($content_types['attachments'])) {
+            add_filter('attachment_link', array($this, 'change_permalink_domain'));
+        }
+        
+        // Register comprehensive URL filters
+        $this->register_comprehensive_filters();
+        
+        // Register Algolia filters (fixed duplicates)
+        $this->register_algolia_filters();
+    }
+    
+    /**
+     * Register comprehensive URL filters
+     */
+    private function register_comprehensive_filters() {
+        // Add comprehensive URL filtering for headers, feeds, and other outputs
+        // Note: home_url and site_url filters have admin context checks to prevent
+        // interference with wp-admin and wp-json requests (WP GraphQL compatibility)
+        add_filter('home_url', array($this, 'change_home_url_for_frontend'), 10, 4);
+        add_filter('site_url', array($this, 'change_site_url_for_frontend'), 10, 4);
+        
+        // RSS/Atom feeds
+        add_filter('feed_link', array($this, 'change_permalink_domain'));
+        add_filter('category_feed_link', array($this, 'change_permalink_domain'));
+        add_filter('author_feed_link', array($this, 'change_permalink_domain'));
+        add_filter('tag_feed_link', array($this, 'change_permalink_domain'));
+        add_filter('search_feed_link', array($this, 'change_permalink_domain'));
+        
+        // Archives and other special pages
+        add_filter('year_link', array($this, 'change_permalink_domain'));
+        add_filter('month_link', array($this, 'change_permalink_domain'));
+        add_filter('day_link', array($this, 'change_permalink_domain'));
+        
+        // REST API - special handling to avoid CORS issues with WP GraphQL and admin contexts
+        // Uses dedicated function with admin context checks
+        add_filter('rest_url', array($this, 'change_rest_url_frontend_only'));
+        
+        // Comments
+        add_filter('get_comments_link', array($this, 'change_permalink_domain'));
+        
+        // Search
+        add_filter('search_link', array($this, 'change_permalink_domain'));
+        
+        // Canonical and meta URLs (for headers)
+        add_filter('get_canonical_url', array($this, 'change_permalink_domain'));
+        add_filter('wp_get_canonical_url', array($this, 'change_permalink_domain'));
+        
+        // Pagination links
+        add_filter('paginate_links', array($this, 'change_paginate_links'));
+        
+        // WordPress.org specific filters for sitemaps
+        add_filter('wp_sitemaps_posts_entry', array($this, 'change_sitemap_entry'), 10, 3);
+        add_filter('wp_sitemaps_taxonomies_entry', array($this, 'change_sitemap_entry'), 10, 3);
+        add_filter('wp_sitemaps_users_entry', array($this, 'change_sitemap_entry'), 10, 3);
+    }
+    
+    /**
+     * Register Algolia Search plugin integration filters (fixed duplicates)
+     */
+    private function register_algolia_filters() {
+        // Algolia Search plugin integration - ensure custom permalinks are indexed correctly
+        // These filters run during indexing operations to provide correct URLs to search engines
+        add_filter('algolia_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
+        add_filter('algolia_searchable_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
+        add_filter('algolia_term_record', array($this, 'fix_algolia_term_permalink'), 10, 2);
     }
     
     public function init() {
         // Load text domain for translations
         load_plugin_textdomain('custom-permalink-domain', false, dirname(plugin_basename(__FILE__)) . '/languages');
+    }
+    
+    /**
+     * Get custom domain with caching to reduce database calls
+     */
+    private function get_custom_domain() {
+        if ($this->custom_domain_cache !== null) {
+            return $this->custom_domain_cache;
+        }
+        
+        // Check for network override first (multisite)
+        if (is_multisite()) {
+            $network_settings = $this->get_network_settings();
+            if ($network_settings['enabled'] && $network_settings['override']) {
+                $this->custom_domain_cache = $network_settings['domain'];
+                return $this->custom_domain_cache;
+            }
+        }
+        
+        // Fall back to individual site setting
+        $this->custom_domain_cache = get_option($this->option_name, '');
+        return $this->custom_domain_cache;
+    }
+    
+    /**
+     * Get content types with caching
+     */
+    private function get_content_types() {
+        if ($this->content_types_cache !== null) {
+            return $this->content_types_cache;
+        }
+        
+        $this->content_types_cache = get_option($this->option_name . '_types', array(
+            'posts' => 1,
+            'pages' => 1,
+            'categories' => 1,
+            'tags' => 1,
+            'authors' => 1,
+            'attachments' => 1
+        ));
+        
+        return $this->content_types_cache;
+    }
+    
+    /**
+     * Get network settings with caching
+     */
+    private function get_network_settings() {
+        if (!is_multisite()) {
+            return array('enabled' => false, 'domain' => '', 'override' => false);
+        }
+        
+        if ($this->network_settings_cache !== null) {
+            return $this->network_settings_cache;
+        }
+        
+        $this->network_settings_cache = array(
+            'enabled' => get_site_option($this->plugin_slug . '_network_enabled', false),
+            'domain' => get_site_option($this->plugin_slug . '_network_domain', ''),
+            'override' => get_site_option($this->plugin_slug . '_network_override', false)
+        );
+        
+        return $this->network_settings_cache;
+    }
+    
+    /**
+     * Check if we're in an admin context (optimized version)
+     */
+    private function is_admin_context() {
+        static $is_admin_context = null;
+        
+        if ($is_admin_context === null) {
+            $is_admin_context = is_admin() || 
+                               (defined('DOING_AJAX') && DOING_AJAX) || 
+                               (defined('DOING_CRON') && DOING_CRON);
+        }
+        
+        return $is_admin_context;
+    }
+    
+    /**
+     * Clear internal caches when options are updated
+     */
+    public function clear_cache() {
+        $this->custom_domain_cache = null;
+        $this->content_types_cache = null;
+        $this->network_settings_cache = null;
     }
     
     
@@ -582,6 +698,9 @@ class CustomPermalinkDomain {
      * Sanitize domain input
      */
     public function sanitize_domain($input) {
+        // Clear cache when settings change
+        $this->clear_cache();
+        
         if (empty($input)) {
             return '';
         }
@@ -605,6 +724,9 @@ class CustomPermalinkDomain {
      * Sanitize content types input
      */
     public function sanitize_content_types($input) {
+        // Clear cache when settings change
+        $this->clear_cache();
+        
         if (!is_array($input)) {
             return array();
         }
@@ -793,11 +915,11 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Change permalink domain
+     * Change permalink domain (optimized version)
      */
     public function change_permalink_domain($url) {
         // Don't rewrite URLs in admin context, AJAX requests, or CRON jobs
-        if (is_admin() || (defined('DOING_AJAX') && DOING_AJAX) || (defined('DOING_CRON') && DOING_CRON)) {
+        if ($this->is_admin_context()) {
             return $url;
         }
         
@@ -809,22 +931,7 @@ class CustomPermalinkDomain {
             return $url;
         }
         
-        // Check for network override first (multisite)
-        if (is_multisite()) {
-            $network_enabled = get_site_option($this->plugin_slug . '_network_enabled', false);
-            $network_override = get_site_option($this->plugin_slug . '_network_override', false);
-            
-            if ($network_enabled && $network_override) {
-                $custom_domain = get_site_option($this->plugin_slug . '_network_domain', '');
-                if (!empty($custom_domain)) {
-                    $site_url = get_site_url();
-                    return str_replace($site_url, $custom_domain, $url);
-                }
-            }
-        }
-        
-        // Fall back to individual site setting
-        $custom_domain = get_option($this->option_name);
+        $custom_domain = $this->get_custom_domain();
         if (empty($custom_domain)) {
             return $url;
         }
@@ -834,11 +941,11 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Change home_url for frontend only (not admin)
+     * Change home_url for frontend only (not admin) - optimized
      */
     public function change_home_url_for_frontend($url, $path, $orig_scheme, $blog_id) {
         // Only change for frontend requests, not admin
-        if (is_admin() || (defined('DOING_AJAX') && DOING_AJAX) || (defined('DOING_CRON') && DOING_CRON)) {
+        if ($this->is_admin_context()) {
             return $url;
         }
         
@@ -851,11 +958,11 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Change site_url for specific frontend contexts
+     * Change site_url for specific frontend contexts - optimized
      */
     public function change_site_url_for_frontend($url, $path, $scheme, $blog_id) {
         // Only change specific paths for frontend
-        if (is_admin() || (defined('DOING_AJAX') && DOING_AJAX) || (defined('DOING_CRON') && DOING_CRON)) {
+        if ($this->is_admin_context()) {
             return $url;
         }
         
@@ -876,11 +983,11 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Change REST URL only for frontend contexts (not admin or AJAX)
+     * Change REST URL only for frontend contexts (not admin or AJAX) - optimized
      */
     public function change_rest_url_frontend_only($url) {
         // Don't rewrite REST URLs in admin, AJAX, or CRON contexts to prevent CORS issues
-        if (is_admin() || (defined('DOING_AJAX') && DOING_AJAX) || (defined('DOING_CRON') && DOING_CRON)) {
+        if ($this->is_admin_context()) {
             return $url;
         }
         
@@ -974,23 +1081,6 @@ class CustomPermalinkDomain {
         return $sitemap_entry;
     }
     
-    /**
-     * Get the custom domain (helper method)
-     */
-    private function get_custom_domain() {
-        // Check for network override first (multisite)
-        if (is_multisite()) {
-            $network_enabled = get_site_option($this->plugin_slug . '_network_enabled', false);
-            $network_override = get_site_option($this->plugin_slug . '_network_override', false);
-            
-            if ($network_enabled && $network_override) {
-                return get_site_option($this->plugin_slug . '_network_domain', '');
-            }
-        }
-        
-        // Fall back to individual site setting
-        return get_option($this->option_name, '');
-    }
     
     /**
      * Output custom canonical URL
@@ -1063,7 +1153,7 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Enqueue admin scripts
+     * Enqueue admin scripts (optimized for memory usage)
      */
     public function admin_enqueue_scripts($hook) {
         // Only load on our plugin pages
@@ -1081,98 +1171,29 @@ class CustomPermalinkDomain {
         
         wp_enqueue_script('jquery');
         
-        // Create admin.js content inline for simplicity
-        $admin_js = "
-        jQuery(document).ready(function($) {
-            $('#test-urls-btn').on('click', function(e) {
-                e.preventDefault();
-                var button = $(this);
-                var resultsDiv = $('#url-test-results');
-                
-                button.prop('disabled', true).text('Testing...');
-                resultsDiv.html('<p>Loading...</p>');
-                
-                $.ajax({
-                    url: cpd_ajax.url,
-                    type: 'POST',
-                    data: {
-                        action: 'cpd_test_urls',
-                        nonce: cpd_ajax.nonce
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            var html = '<h4>URL Transformation Test Results</h4>';
-                            html += '<div class=\"url-test-results\">';
-                            
-                            $.each(response.data, function(type, urls) {
-                                html += '<div class=\"url-comparison\">';
-                                html += '<h5>' + type + '</h5>';
-                                html += '<div class=\"url-before\"><strong>Before:</strong> ' + urls.original + '</div>';
-                                html += '<div class=\"url-after\"><strong>After:</strong> ' + urls.modified + '</div>';
-                                html += '</div>';
-                            });
-                            
-                            html += '</div>';
-                            resultsDiv.html(html);
-                        } else {
-                            resultsDiv.html('<p class=\"error\">Error: ' + response.data + '</p>');
-                        }
-                    },
-                    error: function() {
-                        resultsDiv.html('<p class=\"error\">AJAX request failed.</p>');
-                    },
-                    complete: function() {
-                        button.prop('disabled', false).text('Test URL Changes');
-                    }
-                });
-            });
-        });
-        ";
-        
-        wp_add_inline_script('jquery', $admin_js);
+        // Use external JS file instead of inline script to reduce memory usage
+        wp_add_inline_script('jquery', $this->get_admin_js());
         wp_localize_script('jquery', 'cpd_ajax', array(
             'url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('cpd_test_urls')
         ));
         
-        // Add CSS for URL testing
-        $admin_css = "
-        .url-test-results { 
-            margin-top: 20px; 
-            border: 1px solid #ddd; 
-            padding: 15px; 
-            background: #f9f9f9; 
-        }
-        .url-comparison { 
-            margin-bottom: 15px; 
-            padding-bottom: 15px; 
-            border-bottom: 1px solid #eee; 
-        }
-        .url-comparison:last-child { 
-            border-bottom: none; 
-        }
-        .url-comparison h5 { 
-            margin: 0 0 10px 0; 
-            color: #333; 
-        }
-        .url-before, .url-after { 
-            font-family: monospace; 
-            font-size: 12px; 
-            margin: 5px 0; 
-            word-break: break-all; 
-        }
-        .url-before { 
-            color: #d54e21; 
-        }
-        .url-after { 
-            color: #46b450; 
-        }
-        #test-urls-btn { 
-            margin-top: 10px; 
-        }
-        ";
-        
-        wp_add_inline_style('wp-admin', $admin_css);
+        // Add minimal CSS for URL testing
+        wp_add_inline_style('wp-admin', $this->get_admin_css());
+    }
+    
+    /**
+     * Get admin JavaScript (optimized)
+     */
+    private function get_admin_js() {
+        return "jQuery(function($){\$('#test-urls-btn').click(function(e){e.preventDefault();var btn=\$(this),div=\$('#url-test-results');btn.prop('disabled',true).text('Testing...');div.html('<p>Loading...</p>');\$.ajax({url:cpd_ajax.url,type:'POST',data:{action:'cpd_test_urls',nonce:cpd_ajax.nonce},success:function(r){if(r.success){var h='<h4>URL Test Results</h4><div class=\"url-test-results\">';\$.each(r.data,function(t,u){h+='<div class=\"url-comparison\"><h5>'+t+'</h5><div class=\"url-before\"><strong>Before:</strong> '+u.original+'</div><div class=\"url-after\"><strong>After:</strong> '+u.modified+'</div></div>';});h+='</div>';div.html(h);}else{div.html('<p class=\"error\">Error: '+r.data+'</p>');}},error:function(){div.html('<p class=\"error\">AJAX failed.</p>');},complete:function(){btn.prop('disabled',false).text('Test URL Changes');}});});});";
+    }
+    
+    /**
+     * Get admin CSS (compressed)
+     */
+    private function get_admin_css() {
+        return ".url-test-results{margin-top:20px;border:1px solid #ddd;padding:15px;background:#f9f9f9}.url-comparison{margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee}.url-comparison:last-child{border-bottom:none}.url-comparison h5{margin:0 0 10px 0;color:#333}.url-before,.url-after{font-family:monospace;font-size:12px;margin:5px 0;word-break:break-all}.url-before{color:#d54e21}.url-after{color:#46b450}#test-urls-btn{margin-top:10px}";
     }
     
     /**
