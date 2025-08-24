@@ -43,6 +43,13 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
   - The SEO Framework (canonical URLs)
   - RankMath (canonical URLs)
 
+#### Search Engine Integration
+- **Algolia Search**: Automatic integration with Algolia Search plugin
+  - Fixes permalinks during content indexing
+  - Ensures search results show correct custom domain URLs
+  - Maintains compatibility with search indexing operations
+- **XML Sitemaps**: WordPress core sitemap URLs with custom domains
+
 #### Content Filtering
 - **Post Content**: URLs within post and page content
 - **Widget Content**: URLs in text widgets and other widget content
@@ -98,6 +105,25 @@ The plugin uses WordPress filters to modify permalink generation:
 - `tag_link` - Tag archive URLs
 - `author_link` - Author archive URLs
 - `attachment_link` - Media attachment URLs
+
+### Third-Party Plugin Integration
+
+The plugin includes specialized integrations for popular WordPress plugins:
+
+#### Algolia Search Plugin
+- `algolia_post_shared_attributes` - Fixes post permalinks during indexing
+- `algolia_searchable_post_shared_attributes` - Fixes searchable post permalinks
+- `algolia_term_record` - Fixes term/category permalinks during indexing
+
+This ensures that when Algolia indexes your content, search results will show the correct custom domain URLs instead of the original domain.
+
+#### SEO Plugins
+- **Yoast SEO**: Canonical URLs, Open Graph URLs, Twitter Card URLs
+- **The SEO Framework**: Canonical URL generation
+- **RankMath**: Frontend canonical URLs
+
+#### WP GraphQL Compatibility
+The plugin includes special handling to prevent CORS issues with WP GraphQL by avoiding URL rewriting in admin contexts while maintaining functionality for public-facing requests.
 
 ## Admin Features
 
