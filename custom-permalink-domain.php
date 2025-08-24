@@ -3,7 +3,7 @@
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
 Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible.
-Version: 1.0.2
+Version: 1.0.3
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -140,6 +140,15 @@ class CustomPermalinkDomain {
             add_filter('wp_sitemaps_posts_entry', array($this, 'change_sitemap_entry'), 10, 3);
             add_filter('wp_sitemaps_taxonomies_entry', array($this, 'change_sitemap_entry'), 10, 3);
             add_filter('wp_sitemaps_users_entry', array($this, 'change_sitemap_entry'), 10, 3);
+            
+            // Algolia Search plugin integration - ensure custom permalinks are indexed correctly
+            // These filters run during indexing operations to provide correct URLs to search engines
+            add_filter('algolia_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
+            add_filter('algolia_searchable_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
+            add_filter('algolia_term_record', array($this, 'fix_algolia_term_permalink'), 10, 2);
+            add_filter('algolia_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
+            add_filter('algolia_searchable_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
+            add_filter('algolia_term_record', array($this, 'fix_algolia_term_permalink'), 10, 2);
         }
     }
     
@@ -881,6 +890,61 @@ class CustomPermalinkDomain {
         }
         
         return $this->change_permalink_domain($url);
+    }
+    
+    /**
+     * Change permalink domain for indexing contexts (like Algolia)
+     * This allows search indexers to get the correct custom permalinks
+     * while maintaining CORS protection for interactive admin requests
+     */
+    public function change_permalink_domain_for_indexing($url) {
+        // Allow indexing contexts to get custom permalinks even in admin
+        // This is safe because it's not an interactive request that would cause CORS issues
+        
+        // Check for network override first (multisite)
+        if (is_multisite()) {
+            $network_enabled = get_site_option($this->plugin_slug . '_network_enabled', false);
+            $network_override = get_site_option($this->plugin_slug . '_network_override', false);
+            
+            if ($network_enabled && $network_override) {
+                $custom_domain = get_site_option($this->plugin_slug . '_network_domain', '');
+                if (!empty($custom_domain)) {
+                    $site_url = get_site_url();
+                    return str_replace($site_url, $custom_domain, $url);
+                }
+            }
+        }
+        
+        // Fall back to individual site setting
+        $custom_domain = get_option($this->option_name);
+        if (empty($custom_domain)) {
+            return $url;
+        }
+        
+        $site_url = get_site_url();
+        return str_replace($site_url, $custom_domain, $url);
+    }
+    
+    /**
+     * Fix Algolia permalink during indexing
+     * Ensures Algolia indexes posts with custom permalink domains
+     */
+    public function fix_algolia_permalink($shared_attributes, $post) {
+        if (isset($shared_attributes['permalink'])) {
+            $shared_attributes['permalink'] = $this->change_permalink_domain_for_indexing($shared_attributes['permalink']);
+        }
+        return $shared_attributes;
+    }
+    
+    /**
+     * Fix Algolia term permalink during indexing
+     * Ensures Algolia indexes terms with custom permalink domains
+     */
+    public function fix_algolia_term_permalink($record, $term) {
+        if (isset($record['permalink'])) {
+            $record['permalink'] = $this->change_permalink_domain_for_indexing($record['permalink']);
+        }
+        return $record;
     }
     
     /**
