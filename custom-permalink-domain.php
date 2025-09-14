@@ -3,7 +3,7 @@
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
 Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible with relative URLs support.
-Version: 1.1.0
+Version: 1.2.0
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -21,13 +21,24 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Define plugin constants
+if (!defined('CPD_VERSION')) {
+    define('CPD_VERSION', '1.2.0');
+}
+if (!defined('CPD_PLUGIN_FILE')) {
+    define('CPD_PLUGIN_FILE', __FILE__);
+}
+if (!defined('CPD_PLUGIN_DIR')) {
+    define('CPD_PLUGIN_DIR', plugin_dir_path(__FILE__));
+}
+
 // Include multisite utilities
 require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
 
 /**
  * Custom Permalink Domain Plugin
  * 
- * PERFORMANCE OPTIMIZATIONS (v1.1.0):
+ * PERFORMANCE OPTIMIZATIONS (v1.2.0):
  * - Consolidated database calls using caching properties
  * - Enhanced admin context checking with static caching
  * - Reduced redundant get_site_option() calls in admin pages
