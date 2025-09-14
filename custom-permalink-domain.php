@@ -1267,19 +1267,51 @@ class CustomPermalinkDomain {
                             <div class="cpd-status-info">
                                 <div class="cpd-status-item">
                                     <div class="cpd-status-label">Site URL</div>
-                                    <div class="cpd-status-value" style="font-size: 0.9em; word-break: break-all;"><?= esc_html($site_url); ?></div>
+                                    <div class="cpd-status-value" style="font-size: 0.9em; word-break: break-all;">
+                                        <?= esc_html($site_url ?: home_url()); ?>
+                                    </div>
                                 </div>
                                 <?php if (!empty($current_domain)): ?>
                                 <div class="cpd-status-item">
                                     <div class="cpd-status-label">Custom Domain</div>
-                                    <div class="cpd-status-value" style="font-size: 0.9em; word-break: break-all;"><?= esc_html($current_domain); ?></div>
+                                    <div class="cpd-status-value" style="font-size: 0.9em; word-break: break-all;">
+                                        <?= esc_html($current_domain); ?>
+                                    </div>
+                                </div>
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Status</div>
+                                    <div class="cpd-status-value">✅ Active</div>
                                 </div>
                                 <?php else: ?>
                                 <div class="cpd-status-item">
                                     <div class="cpd-status-label">Custom Domain</div>
                                     <div class="cpd-status-value">❌ Not Set</div>
                                 </div>
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Status</div>
+                                    <div class="cpd-status-value">⚠️ Configure Below</div>
+                                </div>
                                 <?php endif; ?>
+                                
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Plugin Version</div>
+                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.2.0'); ?></div>
+                                </div>
+                                
+                                <?php 
+                                $relative_urls = get_option($this->option_name . '_relative_urls', false);
+                                if (is_multisite()) {
+                                    $network_relative = get_site_option($this->plugin_slug . '_network_relative_enabled', false);
+                                    $network_relative_override = get_site_option($this->plugin_slug . '_network_relative_override', false);
+                                    if ($network_relative_override) {
+                                        $relative_urls = $network_relative;
+                                    }
+                                }
+                                ?>
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Protocol-Relative URLs</div>
+                                    <div class="cpd-status-value"><?= $relative_urls ? '✅ Enabled' : '❌ Disabled'; ?></div>
+                                </div>
                             </div>
                         </div>
                     </div>

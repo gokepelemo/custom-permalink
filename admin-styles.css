@@ -98,17 +98,47 @@
     background: rgba(255,255,255,0.1);
     padding: 12px;
     border-radius: 6px;
+    color: white;
 }
 
 .cpd-status-label {
     font-size: 0.9em;
     opacity: 0.8;
     margin-bottom: 4px;
+    color: rgba(255,255,255,0.9);
 }
 
 .cpd-status-value {
     font-weight: 600;
     font-size: 1.1em;
+    color: white;
+}
+
+/* Ensure status text is always visible */
+.cpd-status-item * {
+    color: inherit;
+}
+
+.cpd-status-item .cpd-status-label {
+    color: rgba(255,255,255,0.9) !important;
+}
+
+.cpd-status-item .cpd-status-value {
+    color: white !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .cpd-status-item {
+        background: rgba(0,0,0,0.8) !important;
+        border: 1px solid rgba(255,255,255,0.5);
+    }
+    
+    .cpd-status-label,
+    .cpd-status-value {
+        color: white !important;
+        font-weight: 700;
+    }
 }
 
 /* Form Sections */
@@ -228,6 +258,14 @@
     align-items: center;
     flex-wrap: wrap;
     margin-top: 20px;
+    padding: 0;
+}
+
+.cpd-action-buttons input[type="submit"],
+.cpd-action-buttons button {
+    height: auto;
+    line-height: 1.4;
+    vertical-align: middle;
 }
 
 .cpd-button-primary {
@@ -241,6 +279,8 @@
     align-items: center;
     gap: 8px;
     font-weight: 500;
+    border: 1px solid #2271b1;
+    font-size: 13px;
 }
 
 .cpd-button-primary:hover,
@@ -259,12 +299,39 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    border: 1px solid #dcdcde;
+    font-size: 13px;
+    font-weight: 500;
+    height: auto;
+    line-height: 1.4;
+    vertical-align: middle;
 }
 
 .cpd-button-secondary:hover,
 .cpd-button-secondary:focus {
     background: #f0f0f1;
     color: #2c3338;
+}
+
+/* Ensure button alignment consistency */
+.cpd-action-buttons .button-primary,
+.cpd-action-buttons .button-secondary,
+.cpd-action-buttons .cpd-button-primary,
+.cpd-action-buttons .cpd-button-secondary {
+    margin: 0 !important;
+    vertical-align: middle !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+    min-height: 36px !important;
+}
+
+/* Fix any WordPress admin conflicts */
+.wrap .cpd-action-buttons input[type="submit"],
+.wrap .cpd-action-buttons button {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
 }
 
 /* Notices */
@@ -397,15 +464,35 @@
     .cpd-action-buttons {
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
     }
     
-    .cpd-action-buttons .button {
-        text-align: center;
-        justify-content: center;
+    .cpd-action-buttons .button,
+    .cpd-action-buttons .button-primary,
+    .cpd-action-buttons .button-secondary,
+    .cpd-action-buttons .cpd-button-primary,
+    .cpd-action-buttons .cpd-button-secondary {
+        text-align: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        margin: 0 !important;
+        display: flex !important;
     }
     
     .cpd-status-info {
         grid-template-columns: 1fr;
+    }
+    
+    .cpd-status-item {
+        color: white !important;
+    }
+    
+    .cpd-status-label {
+        color: rgba(255,255,255,0.9) !important;
+    }
+    
+    .cpd-status-value {
+        color: white !important;
     }
     
     .card-body {
