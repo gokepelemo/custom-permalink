@@ -1,0 +1,112 @@
+# Custom Permalink Domain - Translation Template
+# Copyright (C) 2025 Goke Pelemo
+# This file is distributed under the GPL v2 or later.
+
+msgid ""
+msgstr ""
+"Project-Id-Version: Custom Permalink Domain 1.2.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/custom-permalink-domain\n"
+"POT-Creation-Date: 2025-01-01 00:00:00+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Custom Permalink Domain Settings"
+msgstr ""
+
+msgid "Permalink Domain"
+msgstr ""
+
+msgid "Custom Permalink Domain Network Settings"
+msgstr ""
+
+msgid "Permalink Domain Configuration"
+msgstr ""
+
+msgid "New Permalink Domain"
+msgstr ""
+
+msgid "Content Types to Modify"
+msgstr ""
+
+msgid "Relative URLs Settings"
+msgstr ""
+
+msgid "Enable Relative URLs"
+msgstr ""
+
+msgid "Enable Network-wide Relative URLs"
+msgstr ""
+
+msgid "Override Individual Site Relative URL Settings"
+msgstr ""
+
+msgid "Posts"
+msgstr ""
+
+msgid "Pages"
+msgstr ""
+
+msgid "Categories"
+msgstr ""
+
+msgid "Tags"
+msgstr ""
+
+msgid "Author Pages"
+msgstr ""
+
+msgid "Attachments"
+msgstr ""
+
+msgid "Save Settings"
+msgstr ""
+
+msgid "Save Network Settings"
+msgstr ""
+
+msgid "Please enter a valid URL including protocol (https://)."
+msgstr ""
+
+msgid "Configure the domain to use for permalinks. This will not affect your WordPress admin or login URLs."
+msgstr ""
+
+msgid "Select which content types should use the custom domain for their permalinks."
+msgstr ""
+
+msgid "Enable protocol-relative URLs (//example.com/path) for better cross-domain compatibility."
+msgstr ""
+
+msgid "Convert URLs to protocol-relative format (//example.com/path)"
+msgstr ""
+
+msgid "Convert all absolute URLs to protocol-relative URLs (//example.com/path) for all sites in the network."
+msgstr ""
+
+msgid "Force relative URLs on all sites, overriding individual site preferences."
+msgstr ""
+
+msgid "Enter the full URL including protocol (https://). Leave empty to disable custom domain."
+msgstr ""
+
+msgid "Custom Permalink Domain:"
+msgstr ""
+
+msgid "No custom domain is currently set. Enter a domain below to start using custom permalinks."
+msgstr ""
+
+msgid "Network-wide settings are disabled. Individual sites can configure their own permalink domains."
+msgstr ""
+
+msgid "Network settings saved successfully."
+msgstr ""
+
+msgid "Applied network domain to %d sites."
+msgstr ""
+
+msgid "Cleared custom domains from %d sites."
+msgstr ""
