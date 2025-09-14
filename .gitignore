@@ -2,6 +2,9 @@
 custom-permalink-domain-v*/
 *.zip
 
+# Development scripts
+release.sh
+
 # macOS
 .DS_Store
 

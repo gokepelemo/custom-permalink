@@ -321,6 +321,9 @@ class CustomPermalinkDomain {
         $this->content_types_cache = null;
         $this->network_settings_cache = null;
         $this->relative_urls_cache = null;
+        
+        // Also purge all external caches when settings change
+        $this->purge_all_caches();
     }
     
     /**
@@ -438,11 +441,18 @@ class CustomPermalinkDomain {
         $network_relative_enabled = !empty($_POST['network_relative_enabled']) ? 1 : 0;
         $network_relative_override = !empty($_POST['network_relative_override']) ? 1 : 0;
         
+        // Save data preservation network setting
+        $network_preserve_data = !empty($_POST['network_preserve_data']) ? 1 : 0;
+        
         update_site_option($this->plugin_slug . '_network_enabled', $network_enabled);
         update_site_option($this->plugin_slug . '_network_domain', $network_domain);
         update_site_option($this->plugin_slug . '_network_override', $network_override);
         update_site_option($this->plugin_slug . '_network_relative_enabled', $network_relative_enabled);
         update_site_option($this->plugin_slug . '_network_relative_override', $network_relative_override);
+        update_site_option($this->plugin_slug . '_network_preserve_data', $network_preserve_data);
+        
+        // Purge all caches when network settings change
+        $this->purge_all_caches();
         
         // Redirect back with success message
         $redirect_args['updated'] = 'true';
@@ -506,172 +516,277 @@ class CustomPermalinkDomain {
         
         ?>
         <div class="wrap custom-permalink-domain">
-            <h1>Custom Permalink Domain - Network Settings</h1>
+            <h1>Custom Permalink Domain Network Settings</h1>
             
-            <div class="notice notice-info">
-                <p><strong>Network Overview:</strong> Managing <?= esc_html($stats['total_sites']); ?> sites (<?= esc_html($stats['sites_with_custom_domains']); ?> with custom domains).</p>
-            </div>
-            
-            <form method="post" action="edit.php?action=<?= esc_attr($this->plugin_slug); ?>">
-                <?php wp_nonce_field($this->plugin_slug . '-network-options'); ?>
-                
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="network_enabled">Enable Network-wide Settings</label>
-                        </th>
-                        <td>
-                            <input type="checkbox" id="network_enabled" name="network_enabled" value="1" <?= checked($network_enabled, 1, false); ?> />
-                            <p class="description">Enable network-wide permalink domain settings that apply to all sites.</p>
-                        </td>
-                    </tr>
+            <div class="cpd-admin-grid">
+                <!-- Main Content Area -->
+                <div class="cpd-main-content">
+                    <div class="notice notice-info inline">
+                        <p><strong>🌐 Network Overview:</strong> Managing <?= esc_html($stats['total_sites']); ?> sites (<?= esc_html($stats['sites_with_custom_domains']); ?> with custom domains).</p>
+                    </div>
                     
-                    <tr>
-                        <th scope="row">
-                            <label for="network_domain">Network Permalink Domain</label>
-                        </th>
-                        <td>
-                            <input type="url" id="network_domain" name="network_domain" value="<?= esc_attr($network_domain); ?>" class="regular-text" placeholder="https://cdn.network.com" />
-                            <p class="description">Domain to use for all sites in the network (only if network-wide settings are enabled).</p>
-                        </td>
-                    </tr>
+                    <form method="post" action="edit.php?action=<?= esc_attr($this->plugin_slug); ?>">
+                        <?php wp_nonce_field($this->plugin_slug . '-network-options'); ?>
+                        
+                        <!-- Network Domain Settings Section -->
+                        <div class="cpd-form-section">
+                            <div class="cpd-section-header">
+                                <h3>🌍 Network Domain Settings</h3>
+                                <p class="description">Configure network-wide domain settings for all sites</p>
+                            </div>
+                            <div class="cpd-section-body">
+                                <table class="form-table">
+                                    <tr>
+                                        <th scope="row">Enable Network Settings</th>
+                                        <td>
+                                            <div class="checkbox-label">
+                                                <input type="checkbox" id="network_enabled" name="network_enabled" value="1" <?= checked($network_enabled, 1, false); ?> />
+                                                <span>Enable network-wide permalink domain settings</span>
+                                            </div>
+                                            <p class="description">When enabled, allows network-level control over permalink domains across all sites.</p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <th scope="row">Network Domain</th>
+                                        <td>
+                                            <input type="url" id="network_domain" name="network_domain" value="<?= esc_attr($network_domain); ?>" placeholder="https://cdn.network.com" />
+                                            <p class="description">Domain to use for all sites in the network (only if network settings are enabled).</p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <th scope="row">Override Site Settings</th>
+                                        <td>
+                                            <div class="checkbox-label">
+                                                <input type="checkbox" id="network_override" name="network_override" value="1" <?= checked($network_override, 1, false); ?> />
+                                                <span>Force network domain on all sites</span>
+                                            </div>
+                                            <p class="description">When enabled, network domain overrides individual site settings and prevents site admins from changing domains.</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Relative URLs Settings Section -->
+                        <div class="cpd-form-section">
+                            <div class="cpd-section-header">
+                                <h3>🔗 Relative URLs Settings</h3>
+                                <p class="description">Configure network-wide relative URL settings</p>
+                            </div>
+                            <div class="cpd-section-body">
+                                <table class="form-table">
+                                    <tr>
+                                        <th scope="row">Enable Relative URLs</th>
+                                        <td>
+                                            <div class="checkbox-label">
+                                                <input type="checkbox" id="network_relative_enabled" name="network_relative_enabled" value="1" <?= checked($network_relative_enabled, 1, false); ?> />
+                                                <span>Enable network-wide relative URLs</span>
+                                            </div>
+                                            <p class="description">Convert all absolute URLs to protocol-relative URLs (//example.com/path) for all sites in the network.</p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <th scope="row">Override Site Settings</th>
+                                        <td>
+                                            <div class="checkbox-label">
+                                                <input type="checkbox" id="network_relative_override" name="network_relative_override" value="1" <?= checked($network_relative_override, 1, false); ?> />
+                                                <span>Force relative URLs on all sites</span>
+                                            </div>
+                                            <p class="description">Override individual site relative URL preferences and prevent site admins from changing this setting.</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Data Preservation Settings Section -->
+                        <div class="cpd-form-section">
+                            <div class="cpd-section-header">
+                                <h3>💾 Data Preservation Settings</h3>
+                                <p class="description">Control data retention during plugin updates</p>
+                            </div>
+                            <div class="cpd-section-body">
+                                <table class="form-table">
+                                    <tr>
+                                        <th scope="row">Preserve Network Settings</th>
+                                        <td>
+                                            <?php 
+                                            $network_preserve_data = get_site_option($this->plugin_slug . '_network_preserve_data', false);
+                                            ?>
+                                            <div class="checkbox-label">
+                                                <input type="checkbox" id="network_preserve_data" name="network_preserve_data" value="1" <?= checked($network_preserve_data, 1, false); ?> />
+                                                <span>Preserve network settings on uninstall</span>
+                                            </div>
+                                            <p class="description">When enabled, network-wide plugin settings will be preserved if the plugin is uninstalled and reinstalled.</p>
+                                            <div class="help-text">
+                                                <strong>Note:</strong> Individual site preservation settings will also be respected, giving site admins control over their own data.
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="cpd-action-buttons">
+                            <input type="submit" class="button-primary cpd-button-primary" value="💾 Save Network Settings" />
+                            <button type="button" id="test-urls-btn" class="button-secondary cpd-button-secondary">🔍 Test URL Changes</button>
+                        </div>
+                        
+                        <div id="url-test-results" class="url-test-results" style="display: none;"></div>
+                    </form>
                     
-                    <tr>
-                        <th scope="row">
-                            <label for="network_override">Override Individual Site Settings</label>
-                        </th>
-                        <td>
-                            <input type="checkbox" id="network_override" name="network_override" value="1" <?= checked($network_override, 1, false); ?> />
-                            <p class="description">Force network domain on all sites, overriding individual site settings.</p>
-                        </td>
-                    </tr>
-                </table>
+                    <!-- Bulk Operations Section -->
+                    <div class="cpd-form-section">
+                        <div class="cpd-section-header">
+                            <h3>⚡ Bulk Operations</h3>
+                            <p class="description">Apply actions to all sites in the network at once</p>
+                        </div>
+                        <div class="cpd-section-body">
+                            <form method="post" action="edit.php?action=<?= esc_attr($this->plugin_slug); ?>" style="margin: 0;">
+                                <?php wp_nonce_field($this->plugin_slug . '-network-options'); ?>
+                                <input type="hidden" name="network_enabled" value="<?= $network_enabled ? 1 : 0; ?>" />
+                                <input type="hidden" name="network_domain" value="<?= esc_attr($network_domain); ?>" />
+                                <input type="hidden" name="network_override" value="<?= $network_override ? 1 : 0; ?>" />
+                                
+                                <table class="form-table">
+                                    <tr>
+                                        <th scope="row">Apply Network Domain</th>
+                                        <td>
+                                            <button type="submit" name="bulk_action" value="apply_network_domain" class="cpd-button-secondary" 
+                                                    <?= empty($network_domain) ? 'disabled title="Set a network domain first"' : ''; ?>>
+                                                📢 Apply "<?= esc_html($network_domain ?: 'No domain set'); ?>" to All Sites
+                                            </button>
+                                            <p class="description">This will set the network domain on all sites, overriding individual settings.</p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Clear All Domains</th>
+                                        <td>
+                                            <button type="submit" name="bulk_action" value="clear_all_domains" class="cpd-button-secondary" 
+                                                    onclick="return confirm('Are you sure? This will remove custom domains from all sites.')"
+                                                    style="color: #d63638; border-color: #d63638;">
+                                                🗑️ Clear All Custom Domains
+                                            </button>
+                                            <p class="description">This will remove custom permalink domains from all sites in the network.</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 
-                <h2>Relative URLs Settings</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="network_relative_enabled">Enable Network-wide Relative URLs</label>
-                        </th>
-                        <td>
-                            <input type="checkbox" id="network_relative_enabled" name="network_relative_enabled" value="1" <?= checked($network_relative_enabled, 1, false); ?> />
-                            <p class="description">Convert all absolute URLs to protocol-relative URLs (//example.com/path) for all sites in the network.</p>
-                        </td>
-                    </tr>
+                <!-- Sidebar -->
+                <div class="cpd-sidebar">
+                    <!-- Network Status Card -->
+                    <div class="card cpd-status-card">
+                        <div class="card-header">
+                            <h2>📊 Network Status</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="cpd-status-info">
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Total Sites</div>
+                                    <div class="cpd-status-value"><?= esc_html($stats['total_sites']); ?></div>
+                                </div>
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">With Custom Domains</div>
+                                    <div class="cpd-status-value"><?= esc_html($stats['sites_with_custom_domains']); ?></div>
+                                </div>
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Network Override</div>
+                                    <div class="cpd-status-value"><?= $network_override ? '✅ Active' : '❌ Disabled'; ?></div>
+                                </div>
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Network Domain</div>
+                                    <div class="cpd-status-value"><?= $network_domain ? '✅ Set' : '❌ Not Set'; ?></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <tr>
-                        <th scope="row">
-                            <label for="network_relative_override">Override Individual Site Relative URL Settings</label>
-                        </th>
-                        <td>
-                            <input type="checkbox" id="network_relative_override" name="network_relative_override" value="1" <?= checked($network_relative_override, 1, false); ?> />
-                            <p class="description">Force relative URLs on all sites, overriding individual site preferences.</p>
-                        </td>
-                    </tr>
-                </table>
-                
-                <?php submit_button('Save Network Settings'); ?>
-                <button type="button" id="test-urls-btn" class="button" style="margin-left: 10px;">Test URL Changes</button>
-                <div id="url-test-results" style="margin-top: 20px;"></div>
-            </form>
-            
-            <div class="card">
-                <h2>Bulk Operations</h2>
-                <p>Apply actions to all sites in the network at once.</p>
-                
-                <form method="post" action="edit.php?action=<?= esc_attr($this->plugin_slug); ?>" style="margin-bottom: 20px;">
-                    <?php wp_nonce_field($this->plugin_slug . '-network-options'); ?>
-                    <input type="hidden" name="network_enabled" value="<?= $network_enabled ? 1 : 0; ?>" />
-                    <input type="hidden" name="network_domain" value="<?= esc_attr($network_domain); ?>" />
-                    <input type="hidden" name="network_override" value="<?= $network_override ? 1 : 0; ?>" />
+                    <!-- Recent Sites Card -->
+                    <div class="card card-compact">
+                        <div class="card-header">
+                            <h3>🏢 Recent Site Activity</h3>
+                        </div>
+                        <div class="card-body">
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                <table class="wp-list-table widefat" style="margin: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th style="padding: 8px;">Site</th>
+                                            <th style="padding: 8px;">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php
+                                        $sites = get_sites(array('number' => 10));
+                                        foreach ($sites as $site) {
+                                            switch_to_blog($site->blog_id);
+                                            $site_domain = get_option($this->option_name);
+                                            restore_current_blog();
+                                            ?>
+                                            <tr>
+                                                <td style="padding: 8px; font-size: 0.9em;">
+                                                    <strong><?= esc_html($site->domain . $site->path); ?></strong>
+                                                    <br>
+                                                    <small style="color: #646970;"><?= empty($site_domain) ? 'Default' : esc_html($site_domain); ?></small>
+                                                </td>
+                                                <td style="padding: 8px;">
+                                                    <?php if ($network_enabled && $network_override): ?>
+                                                        <span style="color: #2271b1; font-size: 0.9em;">🌐 Network</span>
+                                                    <?php elseif (!empty($site_domain)): ?>
+                                                        <span style="color: #00a32a; font-size: 0.9em;">✅ Custom</span>
+                                                    <?php else: ?>
+                                                        <span style="color: #646970; font-size: 0.9em;">➖ Default</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                            <?php
+                                        }
+                                        ?>
+                                    </tbody>
+                                </table>
+                                <?php if (count($sites) >= 10): ?>
+                                    <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #646970;"><em>Showing first 10 sites. Visit Network Admin → Sites for complete list.</em></p>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                                <p style="margin: 0; font-size: 0.9em;"><strong>Quick Actions:</strong></p>
+                                <div style="margin-top: 8px;">
+                                    <a href="<?= esc_url(network_admin_url('sites.php')); ?>" class="cpd-button-secondary" style="font-size: 0.9em; padding: 6px 12px;">
+                                        🏢 Manage All Sites
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <table class="form-table">
-                        <tr>
-                            <th scope="row">Bulk Apply Domain</th>
-                            <td>
-                                <button type="submit" name="bulk_action" value="apply_network_domain" class="button" 
-                                        <?= empty($network_domain) ? 'disabled title="Set a network domain first"' : ''; ?>>
-                                    Apply "<?= esc_html($network_domain ?: 'No domain set'); ?>" to All Sites
-                                </button>
-                                <p class="description">This will set the network domain on all sites, overriding individual settings.</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Clear All Domains</th>
-                            <td>
-                                <button type="submit" name="bulk_action" value="clear_all_domains" class="button button-secondary" 
-                                        onclick="return confirm('Are you sure? This will remove custom domains from all sites.')">
-                                    Clear All Custom Domains
-                                </button>
-                                <p class="description">This will remove custom permalink domains from all sites in the network.</p>
-                            </td>
-                        </tr>
-                    </table>
-                </form>
-            </div>
-            
-            <div class="card">
-                <h2>Individual Site Management</h2>
-                <p>If network-wide settings are disabled, each site can configure its own permalink domain in their individual Settings → Permalink Domain page.</p>
-                
-                <h3>Recent Site Activity</h3>
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th>Site</th>
-                            <th>Custom Domain</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $sites = get_sites(array('number' => 10));
-                        foreach ($sites as $site) {
-                            switch_to_blog($site->blog_id);
-                            $site_domain = get_option($this->option_name);
-                            $site_url = get_site_url();
-                            restore_current_blog();
-                            ?>
-                            <tr>
-                                <td>
-                                    <strong><?= esc_html($site->domain . $site->path); ?></strong>
-                                </td>
-                                <td>
-                                    <?= empty($site_domain) ? '<em>Not set</em>' : esc_html($site_domain); ?>
-                                </td>
-                                <td>
-                                    <?php if ($network_enabled && $network_override): ?>
-                                        <span style="color: blue;">Network Override</span>
-                                    <?php elseif (!empty($site_domain)): ?>
-                                        <span style="color: green;">Active</span>
-                                    <?php else: ?>
-                                        <span style="color: gray;">Default</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <a href="<?= esc_url(get_admin_url($site->blog_id, 'options-general.php?page=' . $this->plugin_slug)); ?>" target="_blank">Configure</a>
-                                </td>
-                            </tr>
-                            <?php
-                        }
-                        ?>
-                    </tbody>
-                </table>
-                
-                <?php if (count($sites) >= 10): ?>
-                    <p><em>Showing first 10 sites. Visit Network Admin → Sites for complete list.</em></p>
-                <?php endif; ?>
-            </div>
-            
-            <div class="card">
-                <h2>Multisite Features</h2>
-                <ul>
-                    <li><strong>Network Override:</strong> Apply the same domain to all sites in the network</li>
-                    <li><strong>Individual Control:</strong> Let each site admin configure their own domain</li>
-                    <li><strong>Centralized Management:</strong> View and manage all site configurations from here</li>
-                    <li><strong>Bulk Operations:</strong> Apply settings across multiple sites at once</li>
-                </ul>
+                    <!-- Help Card -->
+                    <div class="card card-compact">
+                        <div class="card-header">
+                            <h3>📚 Network Documentation</h3>
+                        </div>
+                        <div class="card-body">
+                            <p>Network administration resources:</p>
+                            <ul style="margin: 10px 0; padding-left: 20px;">
+                                <li><a href="#" target="_blank">Network Setup Guide</a></li>
+                                <li><a href="#" target="_blank">Multisite Best Practices</a></li>
+                                <li><a href="#" target="_blank">Troubleshooting Network Issues</a></li>
+                            </ul>
+                            
+                            <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-top: 15px;">
+                                <strong>💡 Pro Tip:</strong> Use bulk operations carefully and always test changes on a staging environment first.
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <?php
@@ -725,6 +840,12 @@ class CustomPermalinkDomain {
             $this->plugin_slug . '_settings',
             $this->option_name . '_relative_urls',
             array($this, 'sanitize_relative_urls')
+        );
+        
+        register_setting(
+            $this->plugin_slug . '_settings',
+            $this->option_name . '_preserve_data',
+            array($this, 'sanitize_preserve_data')
         );
         
         // Add settings section
@@ -788,6 +909,23 @@ class CustomPermalinkDomain {
             array($this, 'relative_urls_field_callback'),
             $this->plugin_slug,
             $this->plugin_slug . '_relative_section'
+        );
+        
+        // Add data preservation section
+        add_settings_section(
+            $this->plugin_slug . '_preservation_section',
+            'Data Preservation Settings',
+            array($this, 'preservation_section_callback'),
+            $this->plugin_slug
+        );
+        
+        // Add data preservation field
+        add_settings_field(
+            'preserve_data',
+            'Preserve Settings on Uninstall',
+            array($this, 'preserve_data_field_callback'),
+            $this->plugin_slug,
+            $this->plugin_slug . '_preservation_section'
         );
     }
     
@@ -863,6 +1001,24 @@ class CustomPermalinkDomain {
     }
     
     /**
+     * Data preservation section callback
+     */
+    public function preservation_section_callback() {
+        echo '<p>' . esc_html__('Configure what happens to plugin data when the plugin is uninstalled.', 'custom-permalink-domain') . '</p>';
+    }
+    
+    /**
+     * Data preservation field callback
+     */
+    public function preserve_data_field_callback() {
+        $value = get_option($this->option_name . '_preserve_data', false);
+        $checked = $value ? 'checked="checked"' : '';
+        echo '<input type="checkbox" id="preserve_data" name="' . $this->option_name . '_preserve_data" value="1" ' . $checked . ' />';
+        echo '<label for="preserve_data">Keep plugin settings when uninstalling</label>';
+        echo '<p class="description">When enabled, your custom domain and other plugin settings will be preserved if you uninstall and reinstall the plugin. This is useful for plugin updates or temporary deactivation. <strong>Warning:</strong> Disable this option if you want to completely remove all plugin data.</p>';
+    }
+    
+    /**
      * Sanitize domain input
      */
     public function sanitize_domain($input) {
@@ -930,6 +1086,16 @@ class CustomPermalinkDomain {
     }
     
     /**
+     * Sanitize preserve data input
+     */
+    public function sanitize_preserve_data($input) {
+        // Clear cache when settings change
+        $this->clear_cache();
+        
+        return !empty($input) ? 1 : 0;
+    }
+    
+    /**
      * Admin page HTML
      */
     public function admin_page_html() {
@@ -947,157 +1113,185 @@ class CustomPermalinkDomain {
         <div class="wrap custom-permalink-domain">
             <h1><?= esc_html(get_admin_page_title()); ?></h1>
             
-            <?php if (is_multisite()): ?>
-                <?php 
-                // Use consolidated network settings to reduce database calls
-                $network_settings = $this->get_network_settings();
-                $network_enabled = $network_settings['enabled'];
-                $network_override = $network_settings['override'];
-                $network_domain = $network_settings['domain'];
-                ?>
-                
-                <?php if ($network_enabled && $network_override): ?>
-                    <div class="notice notice-warning">
-                        <p><strong>Network Override Active:</strong> This site's permalink domain is controlled by network settings.</p>
-                        <p>Network Domain: <strong><?= esc_html($network_domain); ?></strong></p>
-                        <p>Contact your network administrator to modify these settings.</p>
-                    </div>
-                <?php elseif ($network_enabled): ?>
-                    <div class="notice notice-info">
-                        <p><strong>Network Settings Available:</strong> Your network administrator has enabled network-wide settings, but individual site configuration is still allowed.</p>
-                        <?php if (!empty($network_domain)): ?>
-                            <p>Network Default: <strong><?= esc_html($network_domain); ?></strong></p>
+            <div class="cpd-admin-grid">
+                <!-- Main Content Area -->
+                <div class="cpd-main-content">
+                    <?php if (is_multisite()): ?>
+                        <?php 
+                        // Use consolidated network settings to reduce database calls
+                        $network_settings = $this->get_network_settings();
+                        $network_enabled = $network_settings['enabled'];
+                        $network_override = $network_settings['override'];
+                        $network_domain = $network_settings['domain'];
+                        ?>
+                        
+                        <?php if ($network_enabled && $network_override): ?>
+                            <div class="notice notice-warning">
+                                <p><strong>🔒 Network Override Active:</strong> This site's permalink domain is controlled by network settings.</p>
+                                <p>Network Domain: <strong><?= esc_html($network_domain); ?></strong></p>
+                                <p>Contact your network administrator to modify these settings.</p>
+                            </div>
+                        <?php elseif ($network_enabled): ?>
+                            <div class="notice notice-info">
+                                <p><strong>🌐 Network Settings Available:</strong> Your network administrator has enabled network-wide settings, but individual site configuration is still allowed.</p>
+                                <?php if (!empty($network_domain)): ?>
+                                    <p>Network Default: <strong><?= esc_html($network_domain); ?></strong></p>
+                                <?php endif; ?>
+                            </div>
                         <?php endif; ?>
+                    <?php endif; ?>
+                    
+                    <?php 
+                    $form_disabled = false;
+                    if (is_multisite()) {
+                        // Reuse already fetched network settings to avoid additional database calls
+                        $form_disabled = $network_enabled && $network_override;
+                    }
+                    ?>
+                    
+                    <form action="options.php" method="post" <?= $form_disabled ? 'style="opacity: 0.5; pointer-events: none;"' : ''; ?>>
+                        <?php if ($form_disabled): ?>
+                            <div class="notice notice-warning inline">
+                                <p><strong>Settings Disabled:</strong> Network administrator has enabled override mode.</p>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php
+                        settings_fields($this->plugin_slug . '_settings');
+                        do_settings_sections($this->plugin_slug);
+                        
+                        if (!$form_disabled): ?>
+                            <div class="cpd-action-buttons">
+                                <input type="submit" class="button-primary cpd-button-primary" value="💾 Save Settings" />
+                                <button type="button" id="test-urls-btn" class="button-secondary cpd-button-secondary">🔍 Test URL Changes</button>
+                            </div>
+                            <div id="url-test-results" class="url-test-results" style="display: none;"></div>
+                        <?php else: ?>
+                            <p><em>Settings are managed at the network level.</em></p>
+                        <?php endif; ?>
+                    </form>
+                    
+                    <!-- How It Works Section -->
+                    <div class="cpd-form-section">
+                        <div class="cpd-section-header">
+                            <h3>🔧 How It Works</h3>
+                            <p class="description">Understanding how this plugin modifies your site URLs</p>
+                        </div>
+                        <div class="cpd-section-body">
+                            <div style="padding: 20px;">
+                                <p>This plugin allows you to change the domain used in permalinks without affecting your WordPress admin area or login page.</p>
+                                
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+                                    <div style="background: #f0f6fc; padding: 15px; border-radius: 6px; border-left: 4px solid #2271b1;">
+                                        <h4 style="margin: 0 0 10px 0; color: #1d2327;">✅ Will Continue Using Original Domain</h4>
+                                        <ul style="margin: 0; padding-left: 20px;">
+                                            <li>WordPress Admin (/wp-admin/)</li>
+                                            <li>Login & Registration pages</li>
+                                            <li>AJAX & API endpoints</li>
+                                            <li>Cron jobs & scheduled tasks</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div style="background: #edfaef; padding: 15px; border-radius: 6px; border-left: 4px solid #00a32a;">
+                                        <h4 style="margin: 0 0 10px 0; color: #1d2327;">🔄 Will Use Custom Domain</h4>
+                                        <ul style="margin: 0; padding-left: 20px;">
+                                            <li>Posts & Pages</li>
+                                            <li>Category & Tag archives</li>
+                                            <li>RSS feeds & sitemaps</li>
+                                            <li>Canonical URLs & meta tags</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                <?php endif; ?>
-            <?php endif; ?>
-            
-            <div class="notice notice-info">
-                <p><strong>Current WordPress Site URL:</strong> <?= esc_html($site_url); ?></p>
-                <?php if (!empty($current_domain)): ?>
-                    <p><strong>Current Custom Permalink Domain:</strong> <?= esc_html($current_domain); ?></p>
-                <?php endif; ?>
-            </div>
-            
-            <?php 
-            $form_disabled = false;
-            if (is_multisite()) {
-                // Reuse already fetched network settings to avoid additional database calls
-                $form_disabled = $network_enabled && $network_override;
-            }
-            ?>
-            
-            <form action="options.php" method="post" <?= $form_disabled ? 'style="opacity: 0.5; pointer-events: none;"' : ''; ?>>
-                <?php if ($form_disabled): ?>
-                    <div class="notice notice-warning inline">
-                        <p><strong>Settings Disabled:</strong> Network administrator has enabled override mode.</p>
+                    
+                    <?php if (!empty($current_domain)): ?>
+                    <!-- URL Examples Section -->
+                    <div class="cpd-form-section">
+                        <div class="cpd-section-header">
+                            <h3>📋 URL Examples</h3>
+                            <p class="description">See how your URLs will change with the current settings</p>
+                        </div>
+                        <div class="cpd-section-body">
+                            <table class="wp-list-table widefat fixed striped" style="margin: 0;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Content Type</th>
+                                        <th style="width: 37.5%;">Original URL</th>
+                                        <th style="width: 37.5%;">New URL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Sample Post</td>
+                                        <td style="font-family: monospace; font-size: 0.9em; word-break: break-all;"><?= esc_html($site_url); ?>/sample-post/</td>
+                                        <td style="font-family: monospace; font-size: 0.9em; word-break: break-all;"><?= esc_html($current_domain); ?>/sample-post/</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Sample Page</td>
+                                        <td style="font-family: monospace; font-size: 0.9em; word-break: break-all;"><?= esc_html($site_url); ?>/sample-page/</td>
+                                        <td style="font-family: monospace; font-size: 0.9em; word-break: break-all;"><?= esc_html($current_domain); ?>/sample-page/</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Category</td>
+                                        <td style="font-family: monospace; font-size: 0.9em; word-break: break-all;"><?= esc_html($site_url); ?>/category/sample/</td>
+                                        <td style="font-family: monospace; font-size: 0.9em; word-break: break-all;"><?= esc_html($current_domain); ?>/category/sample/</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                <?php endif; ?>
+                    <?php endif; ?>
+                </div>
                 
-                <?php
-                settings_fields($this->plugin_slug . '_settings');
-                do_settings_sections($this->plugin_slug);
-                
-                if (!$form_disabled) {
-                    submit_button('Save Settings');
-                    echo '<button type="button" id="test-urls-btn" class="button" style="margin-left: 10px;">Test URL Changes</button>';
-                    echo '<div id="url-test-results" style="margin-top: 20px;"></div>';
-                } else {
-                    echo '<p><em>Settings are managed at the network level.</em></p>';
-                }
-                ?>
-            </form>
-            
-            <div class="card">
-                <h2>How It Works</h2>
-                <p>This plugin allows you to change the domain used in permalinks without affecting your WordPress admin area or login page.</p>
-                <ul>
-                    <li><strong>WordPress Admin:</strong> Will continue to use <?= esc_html($site_url); ?></li>
-                    <li><strong>Permalinks:</strong> Will use your custom domain for public-facing URLs</li>
-                    <li><strong>SEO Benefits:</strong> Useful for CDN integration or domain migration</li>
-                </ul>
-                
-                <h3>URLs That Will Be Changed</h3>
-                <ul>
-                    <li><strong>Post & Page Links:</strong> Individual post and page URLs</li>
-                    <li><strong>Category & Tag Archives:</strong> Taxonomy archive pages</li>
-                    <li><strong>Author Pages:</strong> Author archive pages</li>
-                    <li><strong>RSS Feeds:</strong> All feed URLs (RSS, Atom, etc.)</li>
-                    <li><strong>REST API:</strong> WordPress REST API endpoints</li>
-                    <li><strong>Sitemaps:</strong> WordPress core sitemap URLs</li>
-                    <li><strong>Canonical URLs:</strong> Link rel="canonical" in headers</li>
-                    <li><strong>Meta Tags:</strong> Open Graph og:url and Twitter Card URLs</li>
-                    <li><strong>Pagination:</strong> Next/previous page links</li>
-                    <li><strong>Comments:</strong> Comment feed and form URLs</li>
-                    <li><strong>Search:</strong> Search result URLs</li>
-                    <li><strong>Date Archives:</strong> Year, month, and day archive URLs</li>
-                </ul>
-                
-                <h3>URLs That Will NOT Be Changed</h3>
-                <ul>
-                    <li><strong>Admin Area:</strong> /wp-admin/ and all admin pages</li>
-                    <li><strong>Login/Register:</strong> wp-login.php and registration URLs</li>
-                    <li><strong>AJAX Requests:</strong> WordPress AJAX handlers</li>
-                    <li><strong>Cron Jobs:</strong> Scheduled task URLs</li>
-                    <li><strong>Plugin Assets:</strong> CSS, JS, and image files</li>
-                </ul>
-            </div>
-            
-            <?php if (!empty($current_domain)): ?>
-            <div class="card">
-                <h2>Example URLs</h2>
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th>Content Type</th>
-                            <th>Original URL</th>
-                            <th>New URL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Sample Post</td>
-                            <td><?= esc_html($site_url); ?>/sample-post/</td>
-                            <td><?= esc_html($current_domain); ?>/sample-post/</td>
-                        </tr>
-                        <tr>
-                            <td>Sample Page</td>
-                            <td><?= esc_html($site_url); ?>/sample-page/</td>
-                            <td><?= esc_html($current_domain); ?>/sample-page/</td>
-                        </tr>
-                        <tr>
-                            <td>Category</td>
-                            <td><?= esc_html($site_url); ?>/category/sample/</td>
-                            <td><?= esc_html($current_domain); ?>/category/sample/</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <?php endif; ?>
-            
-            <div class="card">
-                <h2>Plugin Information</h2>
-                <table class="form-table">
-                    <tr>
-                        <th>Plugin Status</th>
-                        <td><?php echo !empty($current_domain) ? '<span style="color: green;">Active with custom domain</span>' : '<span style="color: orange;">Active but no domain set</span>'; ?></td>
-                    </tr>
-                    <tr>
-                        <th>Database Options</th>
-                        <td>
-                            <?php 
-                            $main_option = get_option($this->option_name);
-                            $types_option = get_option($this->option_name . '_types');
-                            echo 'Main setting: ' . (empty($main_option) ? 'Empty' : 'Set') . '<br>';
-                            echo 'Content types: ' . (empty($types_option) ? 'Default' : count(array_filter($types_option)) . ' enabled');
-                            ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Cleanup on Uninstall</th>
-                        <td>All plugin data will be completely removed when the plugin is deleted through WordPress admin.</td>
-                    </tr>
-                </table>
+                <!-- Sidebar -->
+                <div class="cpd-sidebar">
+                    <!-- Current Status Card -->
+                    <div class="card cpd-status-card">
+                        <div class="card-header">
+                            <h2>📊 Current Status</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="cpd-status-info">
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Site URL</div>
+                                    <div class="cpd-status-value" style="font-size: 0.9em; word-break: break-all;"><?= esc_html($site_url); ?></div>
+                                </div>
+                                <?php if (!empty($current_domain)): ?>
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Custom Domain</div>
+                                    <div class="cpd-status-value" style="font-size: 0.9em; word-break: break-all;"><?= esc_html($current_domain); ?></div>
+                                </div>
+                                <?php else: ?>
+                                <div class="cpd-status-item">
+                                    <div class="cpd-status-label">Custom Domain</div>
+                                    <div class="cpd-status-value">❌ Not Set</div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Documentation Card -->
+                    <div class="card card-compact">
+                        <div class="card-header">
+                            <h3>📚 Need Help?</h3>
+                        </div>
+                        <div class="card-body">
+                            <p>Get the most out of your custom domain setup:</p>
+                            <ul style="margin: 10px 0; padding-left: 20px;">
+                                <li><a href="#" target="_blank">Setup Guide</a></li>
+                                <li><a href="#" target="_blank">Troubleshooting</a></li>
+                                <li><a href="#" target="_blank">Best Practices</a></li>
+                            </ul>
+                            
+                            <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-top: 15px;">
+                                <strong>💡 Tip:</strong> Always test your URL changes before going live to ensure everything works as expected.
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <?php
@@ -1435,12 +1629,113 @@ class CustomPermalinkDomain {
     /**
      * Handle AJAX URL testing
      */
+    /**
+     * Purge all major caching plugin caches to ensure settings apply immediately
+     */
+    private function purge_all_caches() {
+        // Clear WordPress object cache
+        if (function_exists('wp_cache_flush')) {
+            wp_cache_flush();
+        }
+        
+        // Clear WP Rocket cache
+        if (function_exists('rocket_clean_domain')) {
+            rocket_clean_domain();
+        } elseif (function_exists('rocket_clean_minify')) {
+            rocket_clean_minify();
+            rocket_clean_cache_busting();
+        }
+        
+        // Clear W3 Total Cache
+        if (function_exists('w3tc_flush_all')) {
+            w3tc_flush_all();
+        } elseif (class_exists('W3_Cache') && method_exists('W3_Cache', 'flush_all')) {
+            W3_Cache::flush_all();
+        }
+        
+        // Clear WP Super Cache
+        if (function_exists('wp_cache_clear_cache')) {
+            wp_cache_clear_cache();
+        } elseif (function_exists('prune_super_cache')) {
+            prune_super_cache(get_current_blog_id(), true);
+        }
+        
+        // Clear LiteSpeed Cache
+        if (class_exists('LiteSpeed_Cache_API') && method_exists('LiteSpeed_Cache_API', 'purge_all')) {
+            LiteSpeed_Cache_API::purge_all();
+        } elseif (defined('LSCWP_V') && function_exists('litespeed_purge_all')) {
+            litespeed_purge_all();
+        }
+        
+        // Clear WP Fastest Cache
+        if (class_exists('WpFastestCache') && method_exists('WpFastestCache', 'deleteCache')) {
+            $wpfc = new WpFastestCache();
+            $wpfc->deleteCache(true);
+        }
+        
+        // Clear Autoptimize cache
+        if (class_exists('autoptimizeCache') && method_exists('autoptimizeCache', 'clearall')) {
+            autoptimizeCache::clearall();
+        }
+        
+        // Clear WP Optimize cache
+        if (class_exists('WP_Optimize') && method_exists('WP_Optimize', 'get_cache')) {
+            $wp_optimize = WP_Optimize();
+            if (method_exists($wp_optimize, 'get_cache') && $wp_optimize->get_cache()) {
+                $wp_optimize->get_cache()->purge();
+            }
+        }
+        
+        // Clear Comet Cache
+        if (class_exists('comet_cache') && method_exists('comet_cache', 'clear')) {
+            comet_cache::clear();
+        }
+        
+        // Clear Cache Enabler
+        if (class_exists('Cache_Enabler') && method_exists('Cache_Enabler', 'clear_total_cache')) {
+            Cache_Enabler::clear_total_cache();
+        }
+        
+        // Clear Hummingbird cache
+        if (class_exists('Hummingbird\\WP_Hummingbird') && function_exists('wphb_clear_module_cache')) {
+            wphb_clear_module_cache('page_cache');
+            wphb_clear_module_cache('minify');
+        }
+        
+        // Clear SG Optimizer cache
+        if (class_exists('SiteGround_Optimizer\\Supercacher\\Supercacher')) {
+            $sg_cache = new SiteGround_Optimizer\Supercacher\Supercacher();
+            if (method_exists($sg_cache, 'purge_cache')) {
+                $sg_cache->purge_cache();
+            }
+        }
+        
+        // Clear our own cached values
+        $this->clear_internal_cache();
+        
+        // Allow other plugins to hook into cache clearing
+        do_action('custom_permalink_domain_cache_cleared');
+    }
+    
+    /**
+     * Clear internal plugin cache
+     */
+    private function clear_internal_cache() {
+        $this->custom_domain_cache = null;
+        $this->content_types_cache = null;
+        $this->network_settings_cache = null;
+        $this->relative_urls_cache = null;
+    }
+
     public function ajax_test_urls() {
         check_ajax_referer('cpd_test_urls', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_die(__('Insufficient permissions.', 'custom-permalink-domain'));
         }
+        
+        // First, purge all caches to ensure we get fresh URLs
+        $this->purge_all_caches();
         
         $custom_domain = get_option($this->option_name);
         if (empty($custom_domain)) {

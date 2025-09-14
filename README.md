@@ -70,19 +70,49 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
 - **Validation**: Input validation and error handling
 
 ### Security & Performance
+
 - **Input Sanitization**: All user inputs are properly sanitized
 - **Output Escaping**: All outputs are escaped to prevent XSS
 - **Capability Checks**: Proper permission verification
 - **Nonce Protection**: CSRF protection for all forms
 - **Caching Support**: Efficient caching to minimize performance impact
 
+### Cache Management (New in 1.1.0)
+
+- **Automatic Cache Purging**: Automatically clears all major caching plugin caches when settings are changed
+- **Multi-Plugin Support**: Compatible with popular WordPress caching plugins:
+  - WP Rocket
+  - W3 Total Cache
+  - WP Super Cache
+  - LiteSpeed Cache
+  - WP Fastest Cache
+  - Autoptimize
+  - WP Optimize
+  - Comet Cache
+  - Cache Enabler
+  - Hummingbird
+  - SG Optimizer
+- **Object Cache Clearing**: Purges WordPress object cache and plugin-specific caches
+- **Test URL Accuracy**: The "Test URL Changes" button now shows accurate results by purging caches first
+- **Immediate Application**: Settings changes are immediately visible without manual cache clearing
+
 ### Protocol-Relative URLs (New in 1.1.0)
+
 - **Automatic Conversion**: Convert absolute URLs to protocol-relative format (//example.com/path)
 - **Network-Level Control**: Manage relative URLs across all sites in multisite networks
 - **HTTPS/HTTP Compatibility**: Seamless switching between protocols
 - **CDN Optimization**: Improve CDN performance and cross-domain compatibility
 - **Site-Level Override**: Individual sites can control their relative URL preferences
 - **Smart Detection**: Preserves admin URLs while converting frontend URLs
+
+### Data Preservation (New in 1.1.0)
+
+- **Optional Data Retention**: Choose whether to keep plugin settings when uninstalling
+- **Update-Friendly**: Preserve settings during plugin updates or temporary deactivation
+- **Network-Level Control**: Network administrators can control data preservation across all sites
+- **Granular Control**: Individual sites can override network preservation settings
+- **Smart Cleanup**: When preservation is disabled, completely removes all plugin data
+- **Migration Support**: Easily move plugin settings between environments
 
 ## Installation
 
