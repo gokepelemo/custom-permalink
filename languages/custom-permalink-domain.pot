@@ -4,7 +4,7 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Custom Permalink Domain 1.0.0\n"
+"Project-Id-Version: Custom Permalink Domain 1.1.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/custom-permalink-domain\n"
 "POT-Creation-Date: 2025-01-01 00:00:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -31,6 +31,18 @@ msgid "New Permalink Domain"
 msgstr ""
 
 msgid "Content Types to Modify"
+msgstr ""
+
+msgid "Relative URLs Settings"
+msgstr ""
+
+msgid "Enable Relative URLs"
+msgstr ""
+
+msgid "Enable Network-wide Relative URLs"
+msgstr ""
+
+msgid "Override Individual Site Relative URL Settings"
 msgstr ""
 
 msgid "Posts"
@@ -64,6 +76,18 @@ msgid "Configure the domain to use for permalinks. This will not affect your Wor
 msgstr ""
 
 msgid "Select which content types should use the custom domain for their permalinks."
+msgstr ""
+
+msgid "Enable protocol-relative URLs (//example.com/path) for better cross-domain compatibility."
+msgstr ""
+
+msgid "Convert URLs to protocol-relative format (//example.com/path)"
+msgstr ""
+
+msgid "Convert all absolute URLs to protocol-relative URLs (//example.com/path) for all sites in the network."
+msgstr ""
+
+msgid "Force relative URLs on all sites, overriding individual site preferences."
 msgstr ""
 
 msgid "Enter the full URL including protocol (https://). Leave empty to disable custom domain."

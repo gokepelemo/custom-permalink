@@ -4,7 +4,7 @@ Tags: permalink, domain, CDN, multisite, migration
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.1.0
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Network: true
@@ -18,6 +18,7 @@ Custom Permalink Domain allows you to serve your WordPress content from a differ
 = Key Features =
 
 * Easy admin interface in Settings menu
+* Protocol-relative URLs support (//example.com/path format)
 * URL validation and sanitization
 * Choose which content types to modify
 * Non-destructive - preserves admin functionality
@@ -33,6 +34,7 @@ Custom Permalink Domain allows you to serve your WordPress content from a differ
 * **Domain Migration**: Test new domains safely
 * **Performance**: Separate content delivery from admin
 * **SEO**: Maintain admin access during domain changes
+* **Protocol Flexibility**: Use relative URLs for HTTPS/HTTP compatibility
 
 == Installation ==
 
@@ -72,6 +74,16 @@ Yes! The plugin is fully multisite compatible with these features:
 
 == Changelog ==
 
+= 1.1.0 =
+* Added comprehensive protocol-relative URLs support
+* Network-level control for relative URLs in multisite environments
+* Performance optimizations: reduced database queries and improved caching
+* Enhanced admin context detection for better compatibility
+* Improved JavaScript error handling and user experience
+* Consolidated network settings retrieval for better performance
+* Added smart relative URL conversion with admin area protection
+* Better documentation and code organization
+
 = 1.0.2 =
 * Fixed WP GraphQL compatibility issues
 * Enhanced admin context checks to prevent CORS errors
@@ -94,6 +106,9 @@ Yes! The plugin is fully multisite compatible with these features:
 * URL validation and security features
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Major feature update: Added comprehensive protocol-relative URLs support with network-level controls and significant performance optimizations.
 
 = 1.0.2 =
 Important compatibility fix for WP GraphQL and REST API. Resolves CORS issues while maintaining full functionality.

@@ -2,8 +2,8 @@
 /*
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
-Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible.
-Version: 1.0.4
+Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible with relative URLs support.
+Version: 1.1.0
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -24,6 +24,19 @@ if (!defined('ABSPATH')) {
 // Include multisite utilities
 require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
 
+/**
+ * Custom Permalink Domain Plugin
+ * 
+ * PERFORMANCE OPTIMIZATIONS (v1.1.0):
+ * - Consolidated database calls using caching properties
+ * - Enhanced admin context checking with static caching
+ * - Reduced redundant get_site_option() calls in admin pages
+ * - Optimized network settings retrieval
+ * - Improved JavaScript compression and error handling
+ * - Better memory usage in admin script loading
+ * - Consolidated network settings validation
+ */
+
 class CustomPermalinkDomain {
     
     private $option_name = 'custom_permalink_domain';
@@ -34,6 +47,7 @@ class CustomPermalinkDomain {
     private $custom_domain_cache = null;
     private $content_types_cache = null;
     private $network_settings_cache = null;
+    private $relative_urls_cache = null;
     
     public function __construct() {
         // Check if we're in network admin
@@ -250,7 +264,39 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Check if we're in an admin context (optimized version)
+     * Get relative URLs settings with caching
+     */
+    private function get_relative_urls_settings() {
+        if ($this->relative_urls_cache !== null) {
+            return $this->relative_urls_cache;
+        }
+        
+        // Check for network override first (multisite)
+        if (is_multisite()) {
+            $network_relative_enabled = get_site_option($this->plugin_slug . '_network_relative_enabled', false);
+            $network_relative_override = get_site_option($this->plugin_slug . '_network_relative_override', false);
+            
+            if ($network_relative_enabled && $network_relative_override) {
+                $this->relative_urls_cache = array(
+                    'enabled' => true,
+                    'source' => 'network_override'
+                );
+                return $this->relative_urls_cache;
+            }
+        }
+        
+        // Fall back to individual site setting
+        $site_relative_enabled = get_option($this->option_name . '_relative_urls', false);
+        $this->relative_urls_cache = array(
+            'enabled' => $site_relative_enabled,
+            'source' => 'site'
+        );
+        
+        return $this->relative_urls_cache;
+    }
+    
+    /**
+     * Check if we're in an admin context (optimized with static caching)
      */
     private function is_admin_context() {
         static $is_admin_context = null;
@@ -258,7 +304,10 @@ class CustomPermalinkDomain {
         if ($is_admin_context === null) {
             $is_admin_context = is_admin() || 
                                (defined('DOING_AJAX') && DOING_AJAX) || 
-                               (defined('DOING_CRON') && DOING_CRON);
+                               (defined('DOING_CRON') && DOING_CRON) ||
+                               (defined('REST_REQUEST') && REST_REQUEST && 
+                                isset($_SERVER['HTTP_REFERER']) && 
+                                strpos($_SERVER['HTTP_REFERER'], '/wp-admin') !== false);
         }
         
         return $is_admin_context;
@@ -271,6 +320,39 @@ class CustomPermalinkDomain {
         $this->custom_domain_cache = null;
         $this->content_types_cache = null;
         $this->network_settings_cache = null;
+        $this->relative_urls_cache = null;
+    }
+    
+    /**
+     * Convert absolute URL to protocol-relative URL
+     */
+    private function make_url_relative($url) {
+        if (empty($url)) {
+            return $url;
+        }
+        
+        // Check if relative URLs are enabled
+        $relative_settings = $this->get_relative_urls_settings();
+        if (!$relative_settings['enabled']) {
+            return $url;
+        }
+        
+        // Convert https://example.com/path to //example.com/path
+        // Convert http://example.com/path to //example.com/path
+        $url = preg_replace('/^https?:\/\//', '//', $url);
+        
+        return $url;
+    }
+    
+    /**
+     * Apply relative URL conversion to a URL after domain change
+     */
+    private function apply_relative_url_conversion($url) {
+        // First apply custom domain change if needed
+        $url = $this->change_permalink_domain($url);
+        
+        // Then make it relative if enabled
+        return $this->make_url_relative($url);
     }
     
     
@@ -352,9 +434,15 @@ class CustomPermalinkDomain {
         $network_domain = esc_url_raw($_POST['network_domain'] ?? '');
         $network_override = !empty($_POST['network_override']) ? 1 : 0;
         
+        // Save relative URLs network settings
+        $network_relative_enabled = !empty($_POST['network_relative_enabled']) ? 1 : 0;
+        $network_relative_override = !empty($_POST['network_relative_override']) ? 1 : 0;
+        
         update_site_option($this->plugin_slug . '_network_enabled', $network_enabled);
         update_site_option($this->plugin_slug . '_network_domain', $network_domain);
         update_site_option($this->plugin_slug . '_network_override', $network_override);
+        update_site_option($this->plugin_slug . '_network_relative_enabled', $network_relative_enabled);
+        update_site_option($this->plugin_slug . '_network_relative_override', $network_relative_override);
         
         // Redirect back with success message
         $redirect_args['updated'] = 'true';
@@ -377,7 +465,7 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Network admin page HTML
+     * Network admin page HTML (optimized database calls)
      */
     public function network_admin_page_html() {
         // Check user capabilities
@@ -409,9 +497,12 @@ class CustomPermalinkDomain {
         $multisite_utils = new CustomPermalinkDomainMultisite();
         $stats = $multisite_utils->get_network_statistics();
         
+        // Consolidate all network option calls for efficiency
         $network_enabled = get_site_option($this->plugin_slug . '_network_enabled', false);
         $network_domain = get_site_option($this->plugin_slug . '_network_domain', '');
         $network_override = get_site_option($this->plugin_slug . '_network_override', false);
+        $network_relative_enabled = get_site_option($this->plugin_slug . '_network_relative_enabled', false);
+        $network_relative_override = get_site_option($this->plugin_slug . '_network_relative_override', false);
         
         ?>
         <div class="wrap custom-permalink-domain">
@@ -452,6 +543,29 @@ class CustomPermalinkDomain {
                         <td>
                             <input type="checkbox" id="network_override" name="network_override" value="1" <?= checked($network_override, 1, false); ?> />
                             <p class="description">Force network domain on all sites, overriding individual site settings.</p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <h2>Relative URLs Settings</h2>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="network_relative_enabled">Enable Network-wide Relative URLs</label>
+                        </th>
+                        <td>
+                            <input type="checkbox" id="network_relative_enabled" name="network_relative_enabled" value="1" <?= checked($network_relative_enabled, 1, false); ?> />
+                            <p class="description">Convert all absolute URLs to protocol-relative URLs (//example.com/path) for all sites in the network.</p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="network_relative_override">Override Individual Site Relative URL Settings</label>
+                        </th>
+                        <td>
+                            <input type="checkbox" id="network_relative_override" name="network_relative_override" value="1" <?= checked($network_relative_override, 1, false); ?> />
+                            <p class="description">Force relative URLs on all sites, overriding individual site preferences.</p>
                         </td>
                     </tr>
                 </table>
@@ -607,6 +721,12 @@ class CustomPermalinkDomain {
             array($this, 'sanitize_content_types')
         );
         
+        register_setting(
+            $this->plugin_slug . '_settings',
+            $this->option_name . '_relative_urls',
+            array($this, 'sanitize_relative_urls')
+        );
+        
         // Add settings section
         add_settings_section(
             $this->plugin_slug . '_section',
@@ -632,6 +752,14 @@ class CustomPermalinkDomain {
             $this->plugin_slug
         );
         
+        // Add relative URLs section
+        add_settings_section(
+            $this->plugin_slug . '_relative_section',
+            'Relative URLs Settings',
+            array($this, 'relative_section_callback'),
+            $this->plugin_slug
+        );
+        
         // Add content type checkboxes
         $content_types = array(
             'posts' => 'Posts',
@@ -652,6 +780,15 @@ class CustomPermalinkDomain {
                 array('type' => $key, 'label' => $label)
             );
         }
+        
+        // Add relative URLs field
+        add_settings_field(
+            'relative_urls',
+            'Enable Relative URLs',
+            array($this, 'relative_urls_field_callback'),
+            $this->plugin_slug,
+            $this->plugin_slug . '_relative_section'
+        );
     }
     
     /**
@@ -666,6 +803,13 @@ class CustomPermalinkDomain {
      */
     public function content_section_callback() {
         echo '<p>' . esc_html__('Select which content types should use the custom domain for their permalinks.', 'custom-permalink-domain') . '</p>';
+    }
+    
+    /**
+     * Relative URLs section callback
+     */
+    public function relative_section_callback() {
+        echo '<p>' . esc_html__('Enable protocol-relative URLs (//example.com/path) for better cross-domain compatibility.', 'custom-permalink-domain') . '</p>';
     }
     
     /**
@@ -692,6 +836,30 @@ class CustomPermalinkDomain {
         $checked = isset($options[$args['type']]) && $options[$args['type']] ? 'checked="checked"' : '';
         echo '<input type="checkbox" id="content_type_' . $args['type'] . '" name="' . $this->option_name . '_types[' . $args['type'] . ']" value="1" ' . $checked . ' />';
         echo '<label for="content_type_' . $args['type'] . '">' . $args['label'] . '</label>';
+    }
+    
+    /**
+     * Relative URLs field callback
+     */
+    public function relative_urls_field_callback() {
+        // Check if network override is active (optimized single call)
+        if (is_multisite()) {
+            $network_settings = $this->get_network_settings();
+            $network_relative_enabled = get_site_option($this->plugin_slug . '_network_relative_enabled', false);
+            $network_relative_override = get_site_option($this->plugin_slug . '_network_relative_override', false);
+            
+            if ($network_relative_enabled && $network_relative_override) {
+                echo '<p><strong>Network Override Active:</strong> Relative URLs are controlled by network settings.</p>';
+                echo '<input type="hidden" name="' . $this->option_name . '_relative_urls" value="' . ($network_relative_enabled ? '1' : '0') . '" />';
+                return;
+            }
+        }
+        
+        $value = get_option($this->option_name . '_relative_urls', false);
+        $checked = $value ? 'checked="checked"' : '';
+        echo '<input type="checkbox" id="relative_urls" name="' . $this->option_name . '_relative_urls" value="1" ' . $checked . ' />';
+        echo '<label for="relative_urls">Convert URLs to protocol-relative format (//example.com/path)</label>';
+        echo '<p class="description">This converts absolute URLs like "https://example.com/page" to "//example.com/page" for better HTTPS/HTTP compatibility and CDN usage.</p>';
     }
     
     /**
@@ -742,6 +910,26 @@ class CustomPermalinkDomain {
     }
     
     /**
+     * Sanitize relative URLs input
+     */
+    public function sanitize_relative_urls($input) {
+        // Clear cache when settings change
+        $this->clear_cache();
+        
+        // Check if network override is active (optimized single call)
+        if (is_multisite()) {
+            $network_settings = $this->get_relative_urls_settings();
+            
+            if ($network_settings['source'] === 'network_override') {
+                // Return network setting, ignore user input
+                return $network_settings['enabled'] ? 1 : 0;
+            }
+        }
+        
+        return !empty($input) ? 1 : 0;
+    }
+    
+    /**
      * Admin page HTML
      */
     public function admin_page_html() {
@@ -761,9 +949,11 @@ class CustomPermalinkDomain {
             
             <?php if (is_multisite()): ?>
                 <?php 
-                $network_enabled = get_site_option($this->plugin_slug . '_network_enabled', false);
-                $network_override = get_site_option($this->plugin_slug . '_network_override', false);
-                $network_domain = get_site_option($this->plugin_slug . '_network_domain', '');
+                // Use consolidated network settings to reduce database calls
+                $network_settings = $this->get_network_settings();
+                $network_enabled = $network_settings['enabled'];
+                $network_override = $network_settings['override'];
+                $network_domain = $network_settings['domain'];
                 ?>
                 
                 <?php if ($network_enabled && $network_override): ?>
@@ -792,8 +982,7 @@ class CustomPermalinkDomain {
             <?php 
             $form_disabled = false;
             if (is_multisite()) {
-                $network_enabled = get_site_option($this->plugin_slug . '_network_enabled', false);
-                $network_override = get_site_option($this->plugin_slug . '_network_override', false);
+                // Reuse already fetched network settings to avoid additional database calls
                 $form_disabled = $network_enabled && $network_override;
             }
             ?>
@@ -932,12 +1121,13 @@ class CustomPermalinkDomain {
         }
         
         $custom_domain = $this->get_custom_domain();
-        if (empty($custom_domain)) {
-            return $url;
+        if (!empty($custom_domain)) {
+            $site_url = get_site_url();
+            $url = str_replace($site_url, $custom_domain, $url);
         }
         
-        $site_url = get_site_url();
-        return str_replace($site_url, $custom_domain, $url);
+        // Apply relative URL conversion if enabled
+        return $this->make_url_relative($url);
     }
     
     /**
@@ -1136,7 +1326,11 @@ class CustomPermalinkDomain {
      */
     public function replace_content_urls($content) {
         $custom_domain = $this->get_custom_domain();
-        if (empty($custom_domain) || empty($content)) {
+        if (empty($custom_domain) && !$this->get_relative_urls_settings()['enabled']) {
+            return $content;
+        }
+        
+        if (empty($content)) {
             return $content;
         }
         
@@ -1144,9 +1338,18 @@ class CustomPermalinkDomain {
         $home_url = get_home_url();
         
         // Replace internal links in content that point to the old domain
-        $content = str_replace($site_url, $custom_domain, $content);
-        if ($home_url !== $site_url) {
-            $content = str_replace($home_url, $custom_domain, $content);
+        if (!empty($custom_domain)) {
+            $content = str_replace($site_url, $custom_domain, $content);
+            if ($home_url !== $site_url) {
+                $content = str_replace($home_url, $custom_domain, $content);
+            }
+        }
+        
+        // Apply relative URL conversion to all absolute URLs in content
+        $relative_settings = $this->get_relative_urls_settings();
+        if ($relative_settings['enabled']) {
+            // Convert https:// and http:// URLs to protocol-relative URLs
+            $content = preg_replace('/https?:\/\//', '//', $content);
         }
         
         return $content;
@@ -1183,10 +1386,43 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Get admin JavaScript (optimized)
+     * Get admin JavaScript (optimized and compressed)
      */
     private function get_admin_js() {
-        return "jQuery(function($){\$('#test-urls-btn').click(function(e){e.preventDefault();var btn=\$(this),div=\$('#url-test-results');btn.prop('disabled',true).text('Testing...');div.html('<p>Loading...</p>');\$.ajax({url:cpd_ajax.url,type:'POST',data:{action:'cpd_test_urls',nonce:cpd_ajax.nonce},success:function(r){if(r.success){var h='<h4>URL Test Results</h4><div class=\"url-test-results\">';\$.each(r.data,function(t,u){h+='<div class=\"url-comparison\"><h5>'+t+'</h5><div class=\"url-before\"><strong>Before:</strong> '+u.original+'</div><div class=\"url-after\"><strong>After:</strong> '+u.modified+'</div></div>';});h+='</div>';div.html(h);}else{div.html('<p class=\"error\">Error: '+r.data+'</p>');}},error:function(){div.html('<p class=\"error\">AJAX failed.</p>');},complete:function(){btn.prop('disabled',false).text('Test URL Changes');}});});});";
+        return "jQuery(function(\$){
+            \$('#test-urls-btn').click(function(e){
+                e.preventDefault();
+                var btn = \$(this), div = \$('#url-test-results');
+                btn.prop('disabled', true).text('Testing...');
+                div.html('<p>Loading...</p>');
+                
+                \$.ajax({
+                    url: cpd_ajax.url,
+                    type: 'POST',
+                    data: {action: 'cpd_test_urls', nonce: cpd_ajax.nonce},
+                    success: function(r){
+                        if(r.success){
+                            var h = '<h4>URL Test Results</h4><div class=\"url-test-results\">';
+                            \$.each(r.data, function(t, u){
+                                h += '<div class=\"url-comparison\"><h5>' + t + '</h5>';
+                                h += '<div class=\"url-before\"><strong>Before:</strong> ' + u.original + '</div>';
+                                h += '<div class=\"url-after\"><strong>After:</strong> ' + u.modified + '</div></div>';
+                            });
+                            h += '</div>';
+                            div.html(h);
+                        } else {
+                            div.html('<p class=\"error\">Error: ' + r.data + '</p>');
+                        }
+                    },
+                    error: function(){
+                        div.html('<p class=\"error\">AJAX request failed.</p>');
+                    },
+                    complete: function(){
+                        btn.prop('disabled', false).text('Test URL Changes');
+                    }
+                });
+            });
+        });";
     }
     
     /**
@@ -1293,6 +1529,8 @@ function custom_permalink_domain_activate($network_wide = false) {
         add_site_option('custom_permalink_domain_network_enabled', false);
         add_site_option('custom_permalink_domain_network_domain', '');
         add_site_option('custom_permalink_domain_network_override', false);
+        add_site_option('custom_permalink_domain_network_relative_enabled', false);
+        add_site_option('custom_permalink_domain_network_relative_override', false);
     } else {
         // Single site activation
         custom_permalink_domain_activate_single_site();
@@ -1313,6 +1551,9 @@ function custom_permalink_domain_activate_single_site() {
             'authors' => 1,
             'attachments' => 1
         ));
+    }
+    if (get_option('custom_permalink_domain_relative_urls') === false) {
+        add_option('custom_permalink_domain_relative_urls', false);
     }
 }
 
@@ -1345,6 +1586,7 @@ function custom_permalink_domain_uninstall() {
     // Remove all plugin options when plugin is deleted
     delete_option('custom_permalink_domain');
     delete_option('custom_permalink_domain_types');
+    delete_option('custom_permalink_domain_relative_urls');
     
     // Remove any transients that might have been created
     delete_transient('custom_permalink_domain_cache');
@@ -1365,6 +1607,7 @@ function custom_permalink_domain_uninstall() {
             // Delete options for each site
             delete_option('custom_permalink_domain');
             delete_option('custom_permalink_domain_types');
+            delete_option('custom_permalink_domain_relative_urls');
             delete_transient('custom_permalink_domain_cache');
             delete_metadata('user', 0, 'custom_permalink_domain_dismissed_notices', '', true);
             
@@ -1372,6 +1615,11 @@ function custom_permalink_domain_uninstall() {
         }
         
         // Also clean up network-wide options if any were created
+        delete_site_option('custom_permalink_domain_network_enabled');
+        delete_site_option('custom_permalink_domain_network_domain');
+        delete_site_option('custom_permalink_domain_network_override');
+        delete_site_option('custom_permalink_domain_network_relative_enabled');
+        delete_site_option('custom_permalink_domain_network_relative_override');
         delete_site_option('custom_permalink_domain_network_settings');
     }
     

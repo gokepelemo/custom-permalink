@@ -8,6 +8,7 @@ Created with the Claude Sonnet 4 LLM.
 
 ### Core Functionality
 - **Custom Domain for Permalinks**: Change the domain used in all public-facing URLs
+- **Protocol-Relative URLs**: Convert URLs to protocol-relative format (//example.com/path) for better HTTPS/HTTP compatibility
 - **Admin Area Protection**: WordPress admin (/wp-admin/) continues to use the original domain
 - **Login Page Protection**: wp-login.php and registration URLs remain on the original domain
 - **AJAX Protection**: admin-ajax.php URLs are preserved to maintain functionality
@@ -75,6 +76,14 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
 - **Nonce Protection**: CSRF protection for all forms
 - **Caching Support**: Efficient caching to minimize performance impact
 
+### Protocol-Relative URLs (New in 1.1.0)
+- **Automatic Conversion**: Convert absolute URLs to protocol-relative format (//example.com/path)
+- **Network-Level Control**: Manage relative URLs across all sites in multisite networks
+- **HTTPS/HTTP Compatibility**: Seamless switching between protocols
+- **CDN Optimization**: Improve CDN performance and cross-domain compatibility
+- **Site-Level Override**: Individual sites can control their relative URL preferences
+- **Smart Detection**: Preserves admin URLs while converting frontend URLs
+
 ## Installation
 
 1. Upload the `custom-permalink-domain.php` file to your WordPress `/wp-content/plugins/` directory
@@ -94,6 +103,8 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
 - **Domain Migration**: Test new domain without changing WordPress config
 - **Performance**: Separate content delivery from admin functionality
 - **SEO**: Maintain admin access while changing public URLs
+- **Protocol Flexibility**: Use relative URLs for HTTPS/HTTP compatibility
+- **Cross-Domain Content**: Improve compatibility with reverse proxies and load balancers
 
 ## How It Works
 
