@@ -1,6 +1,6 @@
 # Custom Permalink Domain
 
-A comprehensive WordPress plugin that allows you to customize the domain used in permalinks without affecting your WordPress admin area, login functionality, or admin-ajax.php URLs. Perfect for CDN integration, domain migration, or multi-domain setups using reverse proxies.
+A comprehensive WordPress plugin that allows you to customize the domain used in permalinks without affecting your WordPress admin area, login functionality, or admin-ajax.php URLs. Perfect for CDN integration, domain migration, headless architectures that maintain the same path on the frontend application, or multi-domain/multi-site setups using reverse proxies.
 
 Created and maintained with the Claude Sonnet 4 LLM.
 
