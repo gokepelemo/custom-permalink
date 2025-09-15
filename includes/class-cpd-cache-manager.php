@@ -6,7 +6,7 @@
  * Consolidates all caching operations for better maintainability.
  * 
  * @package CustomPermalinkDomain
- * @since 1.3.0
+ * @since 1.3.1
  */
 
 // Prevent direct access
