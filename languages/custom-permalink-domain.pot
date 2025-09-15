@@ -4,7 +4,7 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Custom Permalink Domain 1.3.2\n"
+"Project-Id-Version: Custom Permalink Domain 1.3.3\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/custom-permalink-domain\n"
 "POT-Creation-Date: 2025-01-01 00:00:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"

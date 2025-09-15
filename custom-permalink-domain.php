@@ -3,7 +3,7 @@
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
 Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible with relative URLs support.
-Version: 1.3.2
+Version: 1.3.3
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('CPD_VERSION')) {
-    define('CPD_VERSION', '1.3.2');
+    define('CPD_VERSION', '1.3.3');
 }
 if (!defined('CPD_PLUGIN_FILE')) {
     define('CPD_PLUGIN_FILE', __FILE__);
@@ -46,7 +46,7 @@ require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
 /**
  * Custom Permalink Domain Plugin
  * 
- * PERFORMANCE OPTIMIZATIONS (v1.3.2):
+ * PERFORMANCE OPTIMIZATIONS (v1.3.3):
  * - Consolidated database calls using caching properties
  * - Enhanced admin context checking with static caching
  * - Reduced redundant get_site_option() calls in admin pages
@@ -1065,7 +1065,18 @@ class CustomPermalinkDomain {
         $checked = $value ? 'checked="checked"' : '';
         echo '<input type="checkbox" id="preserve_data" name="' . $this->option_name . '_preserve_data" value="1" ' . $checked . ' />';
         echo '<label for="preserve_data">Keep plugin settings when uninstalling</label>';
-        echo '<p class="description">When enabled, your custom domain and other plugin settings will be preserved if you uninstall and reinstall the plugin. This is useful for plugin updates or temporary deactivation. <strong>Warning:</strong> Disable this option if you want to completely remove all plugin data.</p>';
+        
+        // Show different descriptions based on multisite and network settings
+        if (is_multisite()) {
+            $network_preserve = get_site_option($this->plugin_slug . '_network_preserve_data', false);
+            if ($network_preserve) {
+                echo '<p class="description">Network preservation is enabled, so this site\'s settings will be preserved by default. <strong>Uncheck this option</strong> if you want this specific site\'s data to be deleted during uninstall (opt out of network preservation).</p>';
+            } else {
+                echo '<p class="description">When enabled, your custom domain and other plugin settings will be preserved if you uninstall and reinstall the plugin. This is useful for plugin updates or temporary deactivation.</p>';
+            }
+        } else {
+            echo '<p class="description">When enabled, your custom domain and other plugin settings will be preserved if you uninstall and reinstall the plugin. This is useful for plugin updates or temporary deactivation. <strong>Warning:</strong> Disable this option if you want to completely remove all plugin data.</p>';
+        }
     }
     
     /**
@@ -1353,7 +1364,7 @@ class CustomPermalinkDomain {
                                 
                                 <div class="cpd-status-item">
                                     <div class="cpd-status-label">Plugin Version</div>
-                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.3.2'); ?></div>
+                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.3.3'); ?></div>
                                 </div>
                                 
                                 <?php 
@@ -1686,7 +1697,7 @@ class CustomPermalinkDomain {
             'custom-permalink-domain-admin',
             plugin_dir_url(__FILE__) . 'admin-styles.css',
             array(),
-            '1.3.2'
+            '1.3.3'
         );
         
         wp_enqueue_script('jquery');

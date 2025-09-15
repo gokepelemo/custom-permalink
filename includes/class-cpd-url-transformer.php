@@ -6,7 +6,7 @@
  * relative URL conversion, and context-aware filtering.
  * 
  * @package CustomPermalinkDomain
- * @since 1.3.2
+ * @since 1.3.3
  */
 
 // Prevent direct access

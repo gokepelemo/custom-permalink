@@ -1,5 +1,5 @@
 /*
-Custom Permalink Domain Admin Styles - v1.3.2
+Custom Permalink Domain Admin Styles - v1.3.3
 Responsive admin interface styling for the Custom Permalink Domain plugin
 Optimized CSS with reduced !important usage and better specificity
 */
@@ -308,8 +308,17 @@ Optimized CSS with reduced !important usage and better specificity
     height: 36px; /* Fixed height for alignment */
     line-height: 1;
     vertical-align: middle;
-    padding: 8px 16px;
+    padding: 0 16px; /* Consistent padding */
     box-sizing: border-box;
+    margin: 0; /* Remove default margins */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 3px;
+    text-decoration: none;
 }
 
 .cpd-button-primary {
@@ -366,25 +375,73 @@ Optimized CSS with reduced !important usage and better specificity
 .custom-permalink-domain .cpd-action-buttons .button-secondary,
 .custom-permalink-domain .cpd-action-buttons .cpd-button-primary,
 .custom-permalink-domain .cpd-action-buttons .cpd-button-secondary {
-    margin: 0;
+    margin: 0 10px 0 0;
     vertical-align: middle;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     text-align: center;
     box-sizing: border-box;
     min-height: 36px;
     height: 36px; /* Force consistent height */
     line-height: 1;
+    padding: 0 16px !important; /* Consistent padding for both input and button */
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 3px;
+    text-decoration: none;
 }
 
-/* Fix WordPress admin conflicts with higher specificity */
+/* Fix WordPress admin conflicts with higher specificity and important declarations */
 .custom-permalink-domain .wrap .cpd-action-buttons input[type="submit"],
 .custom-permalink-domain .wrap .cpd-action-buttons button {
-    margin-right: 0;
-    margin-left: 0;
+    margin: 0 10px 0 0 !important;
     height: 36px !important; /* Override any WordPress admin styles */
     line-height: 1 !important;
-    vertical-align: top !important; /* Ensure consistent baseline */
+    vertical-align: middle !important; /* Ensure consistent baseline */
+    padding: 0 16px !important; /* Override default input/button padding differences */
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    border-radius: 3px !important;
+    text-decoration: none !important;
+    /* Force reset of any browser default styles that might interfere */
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+}
+
+/* Specific styling for primary and secondary buttons to ensure consistent appearance */
+.custom-permalink-domain .cpd-action-buttons .cpd-button-primary,
+.custom-permalink-domain .cpd-action-buttons .button-primary {
+    background: #2271b1 !important;
+    color: #fff !important;
+    border: 1px solid #2271b1 !important;
+}
+
+.custom-permalink-domain .cpd-action-buttons .cpd-button-primary:hover,
+.custom-permalink-domain .cpd-action-buttons .button-primary:hover {
+    background: #135e96 !important;
+    border-color: #135e96 !important;
+}
+
+.custom-permalink-domain .cpd-action-buttons .cpd-button-secondary,
+.custom-permalink-domain .cpd-action-buttons .button-secondary {
+    background: #f6f7f7 !important;
+    color: #2c3338 !important;
+    border: 1px solid #c3c4c7 !important;
+}
+
+.custom-permalink-domain .cpd-action-buttons .cpd-button-secondary:hover,
+.custom-permalink-domain .cpd-action-buttons .button-secondary:hover {
+    background: #f0f0f1 !important;
+    color: #2c3338 !important;
+    border-color: #8c8f94 !important;
 }
 
 /* Notices */

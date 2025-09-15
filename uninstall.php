@@ -5,7 +5,7 @@
  * This file is executed when the plugin is deleted through WordPress admin
  * It ensures complete cleanup of all plugin data from the database
  * 
- * Note: As of v1.3.2, respects the "preserve data" setting if enabled
+ * Note: As of v1.3.3, respects network preservation settings with site-level opt-out capability
  */
 
 // If uninstall not called from WordPress, then exit
@@ -15,24 +15,37 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 
 /**
  * Check if data preservation is enabled
+ * 
+ * Logic for multisite:
+ * 1. If network preserve is enabled, preserve site settings unless site explicitly opted out (unchecked)
+ * 2. If network preserve is disabled, only preserve if site explicitly opted in (checked)
+ * 
+ * Logic for single site:
+ * 1. Only preserve if site explicitly opted in (checked)
+ * 
+ * Option values:
+ * - false: option doesn't exist (default for sites before preservation feature)
+ * - 0: explicitly unchecked (site opted out)
+ * - 1: explicitly checked (site opted in)
  */
 function custom_permalink_domain_should_preserve_data() {
-    // Check if data preservation is enabled for this site
-    $preserve_data = get_option('custom_permalink_domain_preserve_data', false);
+    // Get the site-level setting - don't use default to detect if option exists
+    $site_preserve = get_option('custom_permalink_domain_preserve_data');
     
-    if ($preserve_data) {
-        return true;
-    }
-    
-    // For multisite, also check if network-level preservation is enabled
+    // For multisite, check network-level setting first
     if (is_multisite()) {
         $network_preserve = get_site_option('custom_permalink_domain_network_preserve_data', false);
+        
         if ($network_preserve) {
-            return true;
+            // Network preservation is enabled
+            // Preserve unless site explicitly opted out (set to 0)
+            // Values: 1 → preserve, 0 → don't preserve, false/null → preserve (inherit network)
+            return $site_preserve !== 0;
         }
     }
     
-    return false;
+    // Default behavior: only preserve if site explicitly enabled it (set to 1)
+    return $site_preserve == 1;
 }
 
 /**
