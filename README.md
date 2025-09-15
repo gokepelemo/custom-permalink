@@ -77,7 +77,7 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
 - **Nonce Protection**: CSRF protection for all forms
 - **Caching Support**: Efficient caching to minimize performance impact
 
-### Cache Management (New in 1.2.0)
+### Cache Management
 
 - **Automatic Cache Purging**: Automatically clears all major caching plugin caches when settings are changed
 - **Multi-Plugin Support**: Compatible with popular WordPress caching plugins:
@@ -96,7 +96,7 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
 - **Test URL Accuracy**: The "Test URL Changes" button now shows accurate results by purging caches first
 - **Immediate Application**: Settings changes are immediately visible without manual cache clearing
 
-### Protocol-Relative URLs (New in 1.2.0)
+### Protocol-Relative URLs
 
 - **Automatic Conversion**: Convert absolute URLs to protocol-relative format (//example.com/path)
 - **Network-Level Control**: Manage relative URLs across all sites in multisite networks
@@ -105,7 +105,7 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
 - **Site-Level Override**: Individual sites can control their relative URL preferences
 - **Smart Detection**: Preserves admin URLs while converting frontend URLs
 
-### Data Preservation (New in 1.2.0)
+### Data Preservation
 
 - **Optional Data Retention**: Choose whether to keep plugin settings when uninstalling
 - **Update-Friendly**: Preserve settings during plugin updates or temporary deactivation
