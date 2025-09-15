@@ -3,7 +3,7 @@
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
 Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible with relative URLs support.
-Version: 1.3.1
+Version: 1.3.2
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('CPD_VERSION')) {
-    define('CPD_VERSION', '1.3.1');
+    define('CPD_VERSION', '1.3.2');
 }
 if (!defined('CPD_PLUGIN_FILE')) {
     define('CPD_PLUGIN_FILE', __FILE__);
@@ -46,7 +46,7 @@ require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
 /**
  * Custom Permalink Domain Plugin
  * 
- * PERFORMANCE OPTIMIZATIONS (v1.3.1):
+ * PERFORMANCE OPTIMIZATIONS (v1.3.2):
  * - Consolidated database calls using caching properties
  * - Enhanced admin context checking with static caching
  * - Reduced redundant get_site_option() calls in admin pages
@@ -83,6 +83,12 @@ class CustomPermalinkDomain {
     private $plugin_slug = 'custom-permalink-domain';
     
     /**
+     * Option name for individual site settings
+     * @var string
+     */
+    private $option_name = 'custom_permalink_domain';
+    
+    /**
      * Network admin flag
      * @var bool
      */
@@ -109,7 +115,7 @@ class CustomPermalinkDomain {
             add_action('admin_menu', array($this, 'add_admin_menu'));
         }
         
-        add_action('admin_init', array($this, 'admin_init'));
+        add_action('admin_init', array($this, 'admin_init'), 5); // Run early to ensure settings are registered first
         add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
         add_action('admin_notices', array($this, 'admin_notices'));
         add_action('network_admin_notices', array($this, 'network_admin_notices'));
@@ -1140,6 +1146,23 @@ class CustomPermalinkDomain {
     }
     
     /**
+     * Debug settings for troubleshooting
+     */
+    public function debug_settings() {
+        if (!current_user_can('manage_options') || !isset($_GET['cpd_debug'])) {
+            return;
+        }
+        
+        echo '<div class="notice notice-info"><p><strong>Settings Debug Info:</strong></p>';
+        echo '<ul>';
+        echo '<li>Domain option: ' . esc_html(get_option($this->option_name, 'NOT_SET')) . '</li>';
+        echo '<li>Types option: ' . esc_html(print_r(get_option($this->option_name . '_types', 'NOT_SET'), true)) . '</li>';
+        echo '<li>Relative URLs: ' . esc_html(get_option($this->option_name . '_relative_urls', 'NOT_SET') ? 'Enabled' : 'Disabled') . '</li>';
+        echo '<li>Preserve Data: ' . esc_html(get_option($this->option_name . '_preserve_data', 'NOT_SET') ? 'Enabled' : 'Disabled') . '</li>';
+        echo '</ul></div>';
+    }
+    
+    /**
      * Admin page HTML
      */
     public function admin_page_html() {
@@ -1156,6 +1179,8 @@ class CustomPermalinkDomain {
         ?>
         <div class="wrap custom-permalink-domain">
             <h1><?= esc_html(get_admin_page_title()); ?></h1>
+            
+            <?php $this->debug_settings(); ?>
             
             <div class="cpd-admin-grid">
                 <!-- Main Content Area -->
@@ -1328,7 +1353,7 @@ class CustomPermalinkDomain {
                                 
                                 <div class="cpd-status-item">
                                     <div class="cpd-status-label">Plugin Version</div>
-                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.3.1'); ?></div>
+                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.3.2'); ?></div>
                                 </div>
                                 
                                 <?php 
@@ -1661,7 +1686,7 @@ class CustomPermalinkDomain {
             'custom-permalink-domain-admin',
             plugin_dir_url(__FILE__) . 'admin-styles.css',
             array(),
-            '1.3.1'
+            '1.3.2'
         );
         
         wp_enqueue_script('jquery');
@@ -1944,6 +1969,7 @@ function custom_permalink_domain_activate($network_wide = false) {
         add_site_option('custom_permalink_domain_network_override', false);
         add_site_option('custom_permalink_domain_network_relative_enabled', false);
         add_site_option('custom_permalink_domain_network_relative_override', false);
+        add_site_option('custom_permalink_domain_network_preserve_data', false);
     } else {
         // Single site activation
         custom_permalink_domain_activate_single_site();
@@ -1967,6 +1993,9 @@ function custom_permalink_domain_activate_single_site() {
     }
     if (get_option('custom_permalink_domain_relative_urls') === false) {
         add_option('custom_permalink_domain_relative_urls', false);
+    }
+    if (get_option('custom_permalink_domain_preserve_data') === false) {
+        add_option('custom_permalink_domain_preserve_data', false);
     }
 }
 

@@ -1,5 +1,5 @@
 /*
-Custom Permalink Domain Admin Styles - v1.3.1
+Custom Permalink Domain Admin Styles - v1.3.2
 Responsive admin interface styling for the Custom Permalink Domain plugin
 Optimized CSS with reduced !important usage and better specificity
 */
@@ -305,9 +305,11 @@ Optimized CSS with reduced !important usage and better specificity
 
 .cpd-action-buttons input[type="submit"],
 .cpd-action-buttons button {
-    height: auto;
-    line-height: 1.4;
+    height: 36px; /* Fixed height for alignment */
+    line-height: 1;
     vertical-align: middle;
+    padding: 8px 16px;
+    box-sizing: border-box;
 }
 
 .cpd-button-primary {
@@ -323,6 +325,9 @@ Optimized CSS with reduced !important usage and better specificity
     font-weight: 500;
     border: 1px solid #2271b1;
     font-size: 13px;
+    height: 36px;
+    line-height: 1;
+    box-sizing: border-box;
 }
 
 .cpd-button-primary:hover,
@@ -344,9 +349,10 @@ Optimized CSS with reduced !important usage and better specificity
     border: 1px solid #dcdcde;
     font-size: 13px;
     font-weight: 500;
-    height: auto;
-    line-height: 1.4;
+    height: 36px;
+    line-height: 1;
     vertical-align: middle;
+    box-sizing: border-box;
 }
 
 .cpd-button-secondary:hover,
@@ -367,6 +373,8 @@ Optimized CSS with reduced !important usage and better specificity
     text-align: center;
     box-sizing: border-box;
     min-height: 36px;
+    height: 36px; /* Force consistent height */
+    line-height: 1;
 }
 
 /* Fix WordPress admin conflicts with higher specificity */
@@ -374,6 +382,9 @@ Optimized CSS with reduced !important usage and better specificity
 .custom-permalink-domain .wrap .cpd-action-buttons button {
     margin-right: 0;
     margin-left: 0;
+    height: 36px !important; /* Override any WordPress admin styles */
+    line-height: 1 !important;
+    vertical-align: top !important; /* Ensure consistent baseline */
 }
 
 /* Notices */
@@ -472,6 +483,12 @@ Optimized CSS with reduced !important usage and better specificity
     opacity: 0.5;
     pointer-events: none;
 }
+
+/* Notices */
+.custom-permalink-domain .notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
     margin: 15px 0;
     border-radius: 6px;
     padding: 12px 16px;
@@ -634,6 +651,7 @@ Optimized CSS with reduced !important usage and better specificity
     .card-body {
         padding: 15px;
     }
+}
 
 @media (max-width: 480px) {
     .custom-permalink-domain .card-header,
