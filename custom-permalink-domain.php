@@ -1368,6 +1368,28 @@ class CustomPermalinkDomain {
     }
     
     /**
+     * Change permalink domain for testing purposes (bypasses admin context check)
+     */
+    public function change_permalink_domain_for_testing($url) {
+        // Don't rewrite wp-admin, wp-json, or login URLs to prevent CORS and admin access issues
+        if (strpos($url, '/wp-admin') !== false || 
+            strpos($url, '/wp-json/') !== false || 
+            strpos($url, 'wp-login') !== false || 
+            strpos($url, 'wp-register') !== false) {
+            return $url;
+        }
+        
+        $custom_domain = $this->get_custom_domain();
+        if (!empty($custom_domain)) {
+            $site_url = get_site_url();
+            $url = str_replace($site_url, $custom_domain, $url);
+        }
+        
+        // Apply relative URL conversion if enabled
+        return $this->make_url_relative($url);
+    }
+    
+    /**
      * Change home_url for frontend only (not admin) - optimized
      */
     public function change_home_url_for_frontend($url, $path, $orig_scheme, $blog_id) {
@@ -1794,12 +1816,12 @@ class CustomPermalinkDomain {
         // Basic URLs that should always exist
         $sample_urls['Home URL'] = array(
             'original' => home_url('/'),
-            'modified' => $this->change_permalink_domain(home_url('/'))
+            'modified' => $this->change_permalink_domain_for_testing(home_url('/'))
         );
         
         $sample_urls['Site URL'] = array(
             'original' => $site_url,
-            'modified' => $this->change_permalink_domain($site_url)
+            'modified' => $this->change_permalink_domain_for_testing($site_url)
         );
         
         // Get a recent post
@@ -1808,12 +1830,12 @@ class CustomPermalinkDomain {
             $post = $recent_post[0];
             $sample_urls['Recent Post'] = array(
                 'original' => get_permalink($post->ID),
-                'modified' => $this->change_permalink_domain(get_permalink($post->ID))
+                'modified' => $this->change_permalink_domain_for_testing(get_permalink($post->ID))
             );
             
             $sample_urls['Post Comments Feed'] = array(
                 'original' => get_post_comments_feed_link($post->ID),
-                'modified' => $this->change_permalink_domain(get_post_comments_feed_link($post->ID))
+                'modified' => $this->change_permalink_domain_for_testing(get_post_comments_feed_link($post->ID))
             );
         } else {
             $sample_urls['Sample Post'] = array(
@@ -1825,18 +1847,18 @@ class CustomPermalinkDomain {
         // RSS Feed
         $sample_urls['RSS Feed'] = array(
             'original' => get_feed_link(),
-            'modified' => $this->change_permalink_domain(get_feed_link())
+            'modified' => $this->change_permalink_domain_for_testing(get_feed_link())
         );
         
         $sample_urls['Comments Feed'] = array(
             'original' => get_feed_link('comments_rss2'),
-            'modified' => $this->change_permalink_domain(get_feed_link('comments_rss2'))
+            'modified' => $this->change_permalink_domain_for_testing(get_feed_link('comments_rss2'))
         );
         
         // REST API
         $sample_urls['REST API'] = array(
             'original' => rest_url(),
-            'modified' => $this->change_permalink_domain(rest_url())
+            'modified' => $this->change_permalink_domain_for_testing(rest_url())
         );
         
         // Category archive (if categories exist)
@@ -1845,7 +1867,7 @@ class CustomPermalinkDomain {
             $category = $categories[0];
             $sample_urls['Category: ' . $category->name] = array(
                 'original' => get_category_link($category->term_id),
-                'modified' => $this->change_permalink_domain(get_category_link($category->term_id))
+                'modified' => $this->change_permalink_domain_for_testing(get_category_link($category->term_id))
             );
         } else {
             $sample_urls['Sample Category'] = array(
@@ -1860,7 +1882,7 @@ class CustomPermalinkDomain {
             $user = $users[0];
             $sample_urls['Author: ' . $user->display_name] = array(
                 'original' => get_author_posts_url($user->ID),
-                'modified' => $this->change_permalink_domain(get_author_posts_url($user->ID))
+                'modified' => $this->change_permalink_domain_for_testing(get_author_posts_url($user->ID))
             );
         }
         
