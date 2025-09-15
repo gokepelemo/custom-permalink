@@ -5,7 +5,7 @@
  * This file is executed when the plugin is deleted through WordPress admin
  * It ensures complete cleanup of all plugin data from the database
  * 
- * Note: As of v1.1.0, respects the "preserve data" setting if enabled
+ * Note: As of v1.3.0, respects the "preserve data" setting if enabled
  */
 
 // If uninstall not called from WordPress, then exit

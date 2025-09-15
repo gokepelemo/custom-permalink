@@ -3,7 +3,7 @@
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
 Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible with relative URLs support.
-Version: 1.2.5
+Version: 1.3.0
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('CPD_VERSION')) {
-    define('CPD_VERSION', '1.2.5');
+    define('CPD_VERSION', '1.3.0');
 }
 if (!defined('CPD_PLUGIN_FILE')) {
     define('CPD_PLUGIN_FILE', __FILE__);
@@ -31,6 +31,14 @@ if (!defined('CPD_PLUGIN_FILE')) {
 if (!defined('CPD_PLUGIN_DIR')) {
     define('CPD_PLUGIN_DIR', plugin_dir_path(__FILE__));
 }
+if (!defined('CPD_PLUGIN_URL')) {
+    define('CPD_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+
+// Include required classes
+require_once plugin_dir_path(__FILE__) . 'includes/class-cpd-options-manager.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-cpd-cache-manager.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-cpd-url-transformer.php';
 
 // Include multisite utilities
 require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
@@ -38,7 +46,7 @@ require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
 /**
  * Custom Permalink Domain Plugin
  * 
- * PERFORMANCE OPTIMIZATIONS (v1.2.0):
+ * PERFORMANCE OPTIMIZATIONS (v1.3.0):
  * - Consolidated database calls using caching properties
  * - Enhanced admin context checking with static caching
  * - Reduced redundant get_site_option() calls in admin pages
@@ -50,17 +58,42 @@ require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
 
 class CustomPermalinkDomain {
     
-    private $option_name = 'custom_permalink_domain';
+    /**
+     * Options manager instance
+     * @var CPD_Options_Manager
+     */
+    private $options;
+    
+    /**
+     * Cache manager instance
+     * @var CPD_Cache_Manager
+     */
+    private $cache_manager;
+    
+    /**
+     * URL transformer instance
+     * @var CPD_URL_Transformer
+     */
+    private $url_transformer;
+    
+    /**
+     * Plugin slug
+     * @var string
+     */
     private $plugin_slug = 'custom-permalink-domain';
+    
+    /**
+     * Network admin flag
+     * @var bool
+     */
     private $is_network_admin = false;
     
-    // Cache frequently accessed options to reduce database queries
-    private $custom_domain_cache = null;
-    private $content_types_cache = null;
-    private $network_settings_cache = null;
-    private $relative_urls_cache = null;
-    
     public function __construct() {
+        // Initialize components
+        $this->options = new CPD_Options_Manager();
+        $this->cache_manager = new CPD_Cache_Manager();
+        $this->url_transformer = new CPD_URL_Transformer($this->options);
+        
         // Check if we're in network admin
         $this->is_network_admin = is_multisite() && is_network_admin();
         
@@ -96,19 +129,19 @@ class CustomPermalinkDomain {
         // Only add frontend filters if not in admin and we have a custom domain
         if (!is_admin() && $this->get_custom_domain()) {
             add_action('wp_head', array($this, 'output_custom_canonical'), 1);
-            add_filter('wpseo_canonical', array($this, 'change_permalink_domain')); // Yoast SEO
-            add_filter('wpseo_opengraph_url', array($this, 'change_permalink_domain')); // Yoast OG
-            add_filter('wpseo_twitter_card_image', array($this, 'change_permalink_domain')); // Yoast Twitter
-            add_filter('the_seo_framework_canonical_url', array($this, 'change_permalink_domain')); // SEO Framework
-            add_filter('rank_math/frontend/canonical', array($this, 'change_permalink_domain')); // RankMath
+            add_filter('wpseo_canonical', array($this->url_transformer, 'transform_url')); // Yoast SEO
+            add_filter('wpseo_opengraph_url', array($this->url_transformer, 'transform_url')); // Yoast OG
+            add_filter('wpseo_twitter_card_image', array($this->url_transformer, 'transform_url')); // Yoast Twitter
+            add_filter('the_seo_framework_canonical_url', array($this->url_transformer, 'transform_url')); // SEO Framework
+            add_filter('rank_math/frontend/canonical', array($this->url_transformer, 'transform_url')); // RankMath
             
             // WordPress core meta and link filters
-            add_filter('get_shortlink', array($this, 'change_permalink_domain'));
-            add_filter('post_comments_feed_link', array($this, 'change_permalink_domain'));
+            add_filter('get_shortlink', array($this->url_transformer, 'transform_url'));
+            add_filter('post_comments_feed_link', array($this->url_transformer, 'transform_url'));
             
             // Filter URLs in content that might be generated
-            add_filter('the_content', array($this, 'replace_content_urls'), 999);
-            add_filter('widget_text', array($this, 'replace_content_urls'), 999);
+            add_filter('the_content', array($this->url_transformer, 'transform_content_urls'), 999);
+            add_filter('widget_text', array($this->url_transformer, 'transform_content_urls'), 999);
         }
     }
     
@@ -125,22 +158,22 @@ class CustomPermalinkDomain {
         
         // Register content type specific filters
         if (!empty($content_types['posts'])) {
-            add_filter('post_link', array($this, 'change_permalink_domain'));
+            add_filter('post_link', array($this->url_transformer, 'transform_url'));
         }
         if (!empty($content_types['pages'])) {
-            add_filter('page_link', array($this, 'change_permalink_domain'));
+            add_filter('page_link', array($this->url_transformer, 'transform_url'));
         }
         if (!empty($content_types['categories'])) {
-            add_filter('category_link', array($this, 'change_permalink_domain'));
+            add_filter('category_link', array($this->url_transformer, 'transform_url'));
         }
         if (!empty($content_types['tags'])) {
-            add_filter('tag_link', array($this, 'change_permalink_domain'));
+            add_filter('tag_link', array($this->url_transformer, 'transform_url'));
         }
         if (!empty($content_types['authors'])) {
-            add_filter('author_link', array($this, 'change_permalink_domain'));
+            add_filter('author_link', array($this->url_transformer, 'transform_url'));
         }
         if (!empty($content_types['attachments'])) {
-            add_filter('attachment_link', array($this, 'change_permalink_domain'));
+            add_filter('attachment_link', array($this->url_transformer, 'transform_url'));
         }
         
         // Register comprehensive URL filters
@@ -157,42 +190,42 @@ class CustomPermalinkDomain {
         // Add comprehensive URL filtering for headers, feeds, and other outputs
         // Note: home_url and site_url filters have admin context checks to prevent
         // interference with wp-admin and wp-json requests (WP GraphQL compatibility)
-        add_filter('home_url', array($this, 'change_home_url_for_frontend'), 10, 4);
-        add_filter('site_url', array($this, 'change_site_url_for_frontend'), 10, 4);
+        add_filter('home_url', array($this->url_transformer, 'transform_home_url'), 10, 4);
+        add_filter('site_url', array($this->url_transformer, 'transform_site_url'), 10, 4);
         
         // RSS/Atom feeds
-        add_filter('feed_link', array($this, 'change_permalink_domain'));
-        add_filter('category_feed_link', array($this, 'change_permalink_domain'));
-        add_filter('author_feed_link', array($this, 'change_permalink_domain'));
-        add_filter('tag_feed_link', array($this, 'change_permalink_domain'));
-        add_filter('search_feed_link', array($this, 'change_permalink_domain'));
+        add_filter('feed_link', array($this->url_transformer, 'transform_url'));
+        add_filter('category_feed_link', array($this->url_transformer, 'transform_url'));
+        add_filter('author_feed_link', array($this->url_transformer, 'transform_url'));
+        add_filter('tag_feed_link', array($this->url_transformer, 'transform_url'));
+        add_filter('search_feed_link', array($this->url_transformer, 'transform_url'));
         
         // Archives and other special pages
-        add_filter('year_link', array($this, 'change_permalink_domain'));
-        add_filter('month_link', array($this, 'change_permalink_domain'));
-        add_filter('day_link', array($this, 'change_permalink_domain'));
+        add_filter('year_link', array($this->url_transformer, 'transform_url'));
+        add_filter('month_link', array($this->url_transformer, 'transform_url'));
+        add_filter('day_link', array($this->url_transformer, 'transform_url'));
         
         // REST API - special handling to avoid CORS issues with WP GraphQL and admin contexts
         // Uses dedicated function with admin context checks
-        add_filter('rest_url', array($this, 'change_rest_url_frontend_only'));
+        add_filter('rest_url', array($this->url_transformer, 'transform_rest_url'));
         
         // Comments
-        add_filter('get_comments_link', array($this, 'change_permalink_domain'));
+        add_filter('get_comments_link', array($this->url_transformer, 'transform_url'));
         
         // Search
-        add_filter('search_link', array($this, 'change_permalink_domain'));
+        add_filter('search_link', array($this->url_transformer, 'transform_url'));
         
         // Canonical and meta URLs (for headers)
-        add_filter('get_canonical_url', array($this, 'change_permalink_domain'));
-        add_filter('wp_get_canonical_url', array($this, 'change_permalink_domain'));
+        add_filter('get_canonical_url', array($this->url_transformer, 'transform_url'));
+        add_filter('wp_get_canonical_url', array($this->url_transformer, 'transform_url'));
         
         // Pagination links
-        add_filter('paginate_links', array($this, 'change_paginate_links'));
+        add_filter('paginate_links', array($this->url_transformer, 'transform_paginate_links'));
         
         // WordPress.org specific filters for sitemaps
-        add_filter('wp_sitemaps_posts_entry', array($this, 'change_sitemap_entry'), 10, 3);
-        add_filter('wp_sitemaps_taxonomies_entry', array($this, 'change_sitemap_entry'), 10, 3);
-        add_filter('wp_sitemaps_users_entry', array($this, 'change_sitemap_entry'), 10, 3);
+        add_filter('wp_sitemaps_posts_entry', array($this->url_transformer, 'transform_sitemap_entry'), 10, 3);
+        add_filter('wp_sitemaps_taxonomies_entry', array($this->url_transformer, 'transform_sitemap_entry'), 10, 3);
+        add_filter('wp_sitemaps_users_entry', array($this->url_transformer, 'transform_sitemap_entry'), 10, 3);
     }
     
     /**
@@ -201,9 +234,9 @@ class CustomPermalinkDomain {
     private function register_algolia_filters() {
         // Algolia Search plugin integration - ensure custom permalinks are indexed correctly
         // These filters run during indexing operations to provide correct URLs to search engines
-        add_filter('algolia_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
-        add_filter('algolia_searchable_post_shared_attributes', array($this, 'fix_algolia_permalink'), 10, 2);
-        add_filter('algolia_term_record', array($this, 'fix_algolia_term_permalink'), 10, 2);
+        add_filter('algolia_post_shared_attributes', array($this->url_transformer, 'transform_algolia_permalink'), 10, 2);
+        add_filter('algolia_searchable_post_shared_attributes', array($this->url_transformer, 'transform_algolia_permalink'), 10, 2);
+        add_filter('algolia_term_record', array($this->url_transformer, 'transform_algolia_term_permalink'), 10, 2);
     }
     
     public function init() {
@@ -334,7 +367,7 @@ class CustomPermalinkDomain {
         $this->relative_urls_cache = null;
         
         // Also purge all external caches when settings change
-        $this->purge_all_caches();
+        $this->cache_manager->purge_all_caches();
     }
     
     /**
@@ -363,7 +396,7 @@ class CustomPermalinkDomain {
      */
     private function apply_relative_url_conversion($url) {
         // First apply custom domain change if needed
-        $url = $this->change_permalink_domain($url);
+        $url = $this->url_transformer->transform_url($url);
         
         // Then make it relative if enabled
         return $this->make_url_relative($url);
@@ -463,7 +496,7 @@ class CustomPermalinkDomain {
         update_site_option($this->plugin_slug . '_network_preserve_data', $network_preserve_data);
         
         // Purge all caches when network settings change
-        $this->purge_all_caches();
+        $this->cache_manager->purge_all_caches();
         
         // Redirect back with success message
         $redirect_args['updated'] = 'true';
@@ -1295,7 +1328,7 @@ class CustomPermalinkDomain {
                                 
                                 <div class="cpd-status-item">
                                     <div class="cpd-status-label">Plugin Version</div>
-                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.2.5'); ?></div>
+                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.3.0'); ?></div>
                                 </div>
                                 
                                 <?php 
@@ -1628,7 +1661,7 @@ class CustomPermalinkDomain {
             'custom-permalink-domain-admin',
             plugin_dir_url(__FILE__) . 'admin-styles.css',
             array(),
-            '1.2.5'
+            '1.3.0'
         );
         
         wp_enqueue_script('jquery');
@@ -1803,7 +1836,7 @@ class CustomPermalinkDomain {
         }
         
         // First, purge all caches to ensure we get fresh URLs
-        $this->purge_all_caches();
+        $this->cache_manager->purge_all_caches();
         
         $custom_domain = get_option($this->option_name);
         if (empty($custom_domain)) {
@@ -1816,12 +1849,12 @@ class CustomPermalinkDomain {
         // Basic URLs that should always exist
         $sample_urls['Home URL'] = array(
             'original' => home_url('/'),
-            'modified' => $this->change_permalink_domain_for_testing(home_url('/'))
+            'modified' => $this->url_transformer->transform_url_for_testing(home_url('/'))
         );
         
         $sample_urls['Site URL'] = array(
             'original' => $site_url,
-            'modified' => $this->change_permalink_domain_for_testing($site_url)
+            'modified' => $this->url_transformer->transform_url_for_testing($site_url)
         );
         
         // Get a recent post
@@ -1830,12 +1863,12 @@ class CustomPermalinkDomain {
             $post = $recent_post[0];
             $sample_urls['Recent Post'] = array(
                 'original' => get_permalink($post->ID),
-                'modified' => $this->change_permalink_domain_for_testing(get_permalink($post->ID))
+                'modified' => $this->url_transformer->transform_url_for_testing(get_permalink($post->ID))
             );
             
             $sample_urls['Post Comments Feed'] = array(
                 'original' => get_post_comments_feed_link($post->ID),
-                'modified' => $this->change_permalink_domain_for_testing(get_post_comments_feed_link($post->ID))
+                'modified' => $this->url_transformer->transform_url_for_testing(get_post_comments_feed_link($post->ID))
             );
         } else {
             $sample_urls['Sample Post'] = array(
@@ -1847,18 +1880,18 @@ class CustomPermalinkDomain {
         // RSS Feed
         $sample_urls['RSS Feed'] = array(
             'original' => get_feed_link(),
-            'modified' => $this->change_permalink_domain_for_testing(get_feed_link())
+            'modified' => $this->url_transformer->transform_url_for_testing(get_feed_link())
         );
         
         $sample_urls['Comments Feed'] = array(
             'original' => get_feed_link('comments_rss2'),
-            'modified' => $this->change_permalink_domain_for_testing(get_feed_link('comments_rss2'))
+            'modified' => $this->url_transformer->transform_url_for_testing(get_feed_link('comments_rss2'))
         );
         
         // REST API
         $sample_urls['REST API'] = array(
             'original' => rest_url(),
-            'modified' => $this->change_permalink_domain_for_testing(rest_url())
+            'modified' => $this->url_transformer->transform_url_for_testing(rest_url())
         );
         
         // Category archive (if categories exist)
@@ -1867,7 +1900,7 @@ class CustomPermalinkDomain {
             $category = $categories[0];
             $sample_urls['Category: ' . $category->name] = array(
                 'original' => get_category_link($category->term_id),
-                'modified' => $this->change_permalink_domain_for_testing(get_category_link($category->term_id))
+                'modified' => $this->url_transformer->transform_url_for_testing(get_category_link($category->term_id))
             );
         } else {
             $sample_urls['Sample Category'] = array(
@@ -1882,7 +1915,7 @@ class CustomPermalinkDomain {
             $user = $users[0];
             $sample_urls['Author: ' . $user->display_name] = array(
                 'original' => get_author_posts_url($user->ID),
-                'modified' => $this->change_permalink_domain_for_testing(get_author_posts_url($user->ID))
+                'modified' => $this->url_transformer->transform_url_for_testing(get_author_posts_url($user->ID))
             );
         }
         
