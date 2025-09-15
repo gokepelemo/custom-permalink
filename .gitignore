@@ -1,4 +1,5 @@
 # Release directories and archives
+backup-pre-release-*
 custom-permalink-domain-v*/
 *.zip
 
