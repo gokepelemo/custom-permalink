@@ -89,7 +89,7 @@ class CPD_Options_Manager {
      * Uses in-memory caching to prevent redundant database queries
      * within a single request lifecycle.
      * 
-     * @since 1.3.3
+     * @since 1.3.5
      * @return string Custom domain URL or empty string if not configured
      * 
      * @example
@@ -114,7 +114,7 @@ class CPD_Options_Manager {
      * have their URLs transformed. Provides sensible defaults if no configuration
      * exists. Uses in-memory caching for performance.
      * 
-     * @since 1.3.3
+     * @since 1.3.5
      * @return array Associative array of content type enablement flags
      *               Format: ['posts' => 1, 'pages' => 1, 'categories' => 1, ...]
      * 

@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('CPD_VERSION')) {
-    define('CPD_VERSION', '1.3.3');
+    define('CPD_VERSION', '1.3.5');
 }
 if (!defined('CPD_PLUGIN_FILE')) {
     define('CPD_PLUGIN_FILE', __FILE__);
@@ -1529,7 +1529,7 @@ class CustomPermalinkDomain {
                                 
                                 <div class="cpd-status-item">
                                     <div class="cpd-status-label">Plugin Version</div>
-                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.3.3'); ?></div>
+                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.3.5'); ?></div>
                                 </div>
                                 
                                 <?php 
@@ -1862,7 +1862,7 @@ class CustomPermalinkDomain {
             'custom-permalink-domain-admin',
             plugin_dir_url(__FILE__) . 'admin-styles.css',
             array(),
-            '1.3.3'
+            '1.3.5'
         );
         
         wp_enqueue_script('jquery');
