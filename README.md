@@ -189,29 +189,7 @@ The plugin includes special handling to prevent CORS issues with WP GraphQL by a
 
 ## Changelog
 
-### Version 1.3.3 (September 14, 2025)
-
-- **Enhanced Network Preservation Logic**: When "Preserve network settings on uninstall" is enabled at the network level, site-level settings are now preserved by default unless explicitly opted out at the site level
-- **Improved UI Descriptions**: Site-level preserve option now shows contextual descriptions based on network settings to clarify inheritance behavior
-- **Better Button Alignment**: Fixed visual alignment issues between "Save Network Settings" and "Test URL Changes" buttons
-
-### Version 1.3.2 (September 14, 2025)
-
-- **Critical Fix**: Resolved settings persistence issues where network and site settings weren't being saved properly
-- **Enhanced Activation**: Improved plugin activation to ensure all settings are properly initialized
-- **Debug Functionality**: Added troubleshooting capabilities accessible via ?cpd_debug=1 parameter
-
-### Version 1.3.1 (September 14, 2025)
-
-- **Package Fix**: Resolved missing /includes/ directory in release packages
-- **Release Automation**: Enhanced automated release script with better cleanup and validation
-
-### Version 1.3.0 (September 14, 2025)
-
-- **Major Refactoring**: Decomposed monolithic class into specialized components (URL Transformer, Cache Manager, Options Manager)
-- **Performance Improvements**: Optimized database queries with batch retrieval and caching
-- **Enhanced Cache Support**: Added support for 12 cache plugins with unified management
-- **CSS Optimization**: Reduced !important declarations and improved responsive design
+See [CHANGELOG.md](./CHANGELOG.md) for the complete version history.
 
 ## Support
 

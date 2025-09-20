@@ -4,7 +4,7 @@ Tags: permalink, domain, CDN, multisite, migration
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.3.3
+Stable tag: 1.3.5
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Network: true
@@ -73,6 +73,13 @@ Yes! The plugin is fully multisite compatible with these features:
 3. Content type selection options
 
 == Changelog ==
+
+= 1.3.5 =
+* **Documentation Overhaul**: Comprehensive PHPDoc throughout entire codebase with detailed architecture explanations
+* **Code Quality**: Enhanced maintainability through extensive inline documentation and best practices
+* **Architecture Analysis**: Completed modularity and performance analysis with improvement recommendations
+* **Class Documentation**: All core classes now include usage examples, performance notes, and architectural details
+* **Utility Documentation**: Added detailed preservation logic documentation and multisite operation explanations
 
 = 1.1.0 =
 * Added comprehensive protocol-relative URLs support

@@ -2,11 +2,43 @@
 /**
  * URL Transformer Class for Custom Permalink Domain Plugin
  * 
- * Handles all URL transformation logic including domain changes,
- * relative URL conversion, and context-aware filtering.
+ * Advanced URL transformation engine with intelligent context detection and
+ * performance optimization. Handles domain substitution, protocol-relative
+ * URL conversion, and complex WordPress URL filtering scenarios.
+ * 
+ * Core Features:
+ * - Intelligent domain transformation with site URL detection
+ * - Protocol-relative URL conversion (//domain.com/path)
+ * - Context-aware filtering (admin vs frontend, AJAX vs regular requests)
+ * - WordPress core URL filter integration
+ * - SEO plugin compatibility (Yoast, RankMath, etc.)
+ * - Performance optimizations with aggressive caching
+ * 
+ * Advanced Capabilities:
+ * - REST API URL transformation with endpoint preservation
+ * - Sitemap URL modification for search engines
+ * - Pagination link transformation
+ * - Content URL scanning and replacement
+ * - Algolia search index URL correction
+ * - Multisite network URL handling
+ * 
+ * Performance Optimizations:
+ * - In-memory caching of transformation settings
+ * - Early return patterns for non-transformable URLs
+ * - Regex optimization for content URL scanning
+ * - Context-aware admin bypass mechanisms
+ * 
+ * Usage Examples:
+ * ```php
+ * $transformer = new CPD_URL_Transformer($options_manager);
+ * $new_url = $transformer->transform_url($original_url);
+ * $content = $transformer->transform_content_urls($post_content);
+ * ```
  * 
  * @package CustomPermalinkDomain
- * @since 1.3.3
+ * @since   1.3.3
+ * @version 1.3.4
+ * @author  Your Name
  */
 
 // Prevent direct access

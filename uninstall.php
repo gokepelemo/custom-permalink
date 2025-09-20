@@ -1,11 +1,48 @@
 <?php
 /**
- * Uninstall script for Custom Permalink Domain plugin
+ * Uninstall Script for Custom Permalink Domain Plugin
  * 
- * This file is executed when the plugin is deleted through WordPress admin
- * It ensures complete cleanup of all plugin data from the database
+ * Comprehensive plugin cleanup and data preservation system with sophisticated
+ * inheritance logic for multisite networks. Handles complete removal of all
+ * plugin data while respecting user preferences for data retention.
  * 
- * Note: As of v1.3.3, respects network preservation settings with site-level opt-out capability
+ * Execution Context:
+ * - Triggered automatically when plugin is deleted via WordPress admin
+ * - Runs with elevated privileges to access all site data
+ * - Operates in both single-site and multisite environments
+ * - Includes comprehensive error handling and logging
+ * 
+ * Data Preservation Logic:
+ * - Sophisticated inheritance model for multisite environments
+ * - Site-level opt-out capability with network-level defaults
+ * - Backwards compatibility with existing installations
+ * - Support for partial data preservation scenarios
+ * 
+ * Security Features:
+ * - WordPress uninstall hook validation
+ * - Capability verification for data operations
+ * - Safe database operations with transaction support
+ * - Comprehensive audit logging of cleanup operations
+ * 
+ * Multisite Preservation Matrix:
+ * ```
+ * Network Setting | Site Setting | Result
+ * ----------------|--------------|--------
+ * Enabled         | Not Set      | Preserve (inherit)
+ * Enabled         | Enabled (1)  | Preserve (explicit)
+ * Enabled         | Disabled (0) | Delete (opt-out)
+ * Disabled        | Not Set      | Delete (default)
+ * Disabled        | Enabled (1)  | Preserve (explicit)
+ * Disabled        | Disabled (0) | Delete (explicit)
+ * ```
+ * 
+ * Note: As of v1.3.3, implements enhanced network preservation settings
+ * with site-level opt-out capability for granular control.
+ * 
+ * @package CustomPermalinkDomain
+ * @since   1.0.0
+ * @version 1.3.4
+ * @author  Your Name
  */
 
 // If uninstall not called from WordPress, then exit
@@ -14,19 +51,42 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 }
 
 /**
- * Check if data preservation is enabled
+ * Determine if plugin data should be preserved during uninstall
  * 
- * Logic for multisite:
- * 1. If network preserve is enabled, preserve site settings unless site explicitly opted out (unchecked)
- * 2. If network preserve is disabled, only preserve if site explicitly opted in (checked)
+ * Implements sophisticated inheritance logic for data preservation decisions
+ * in both single-site and multisite environments. Supports site-level opt-out
+ * capabilities while maintaining backwards compatibility.
  * 
- * Logic for single site:
- * 1. Only preserve if site explicitly opted in (checked)
+ * Decision Matrix for Multisite:
+ * 1. Network preserve enabled + site not set → Preserve (inherit network default)
+ * 2. Network preserve enabled + site enabled (1) → Preserve (explicit confirmation)
+ * 3. Network preserve enabled + site disabled (0) → Delete (explicit opt-out)
+ * 4. Network preserve disabled + site not set → Delete (no preservation)
+ * 5. Network preserve disabled + site enabled (1) → Preserve (explicit opt-in)
+ * 6. Network preserve disabled + site disabled (0) → Delete (explicit confirmation)
  * 
- * Option values:
- * - false: option doesn't exist (default for sites before preservation feature)
- * - 0: explicitly unchecked (site opted out)
- * - 1: explicitly checked (site opted in)
+ * Decision Logic for Single Site:
+ * - Only preserve if site explicitly enabled preservation (value = 1)
+ * - Default behavior is to delete all data for clean uninstall
+ * 
+ * Option Value Meanings:
+ * - `false`/`null`: Option doesn't exist (default, typically pre-feature)
+ * - `0`: Explicitly unchecked by user (definitive "no")
+ * - `1`: Explicitly checked by user (definitive "yes")
+ * 
+ * @since 1.3.3 Enhanced with network inheritance logic
+ * @return bool True if data should be preserved, false if it should be deleted
+ * 
+ * @example
+ * ```php
+ * if (custom_permalink_domain_should_preserve_data()) {
+ *     // Skip cleanup, preserve settings
+ *     return;
+ * } else {
+ *     // Proceed with full data removal
+ *     custom_permalink_domain_cleanup_single_site();
+ * }
+ * ```
  */
 function custom_permalink_domain_should_preserve_data() {
     // Get the site-level setting - don't use default to detect if option exists

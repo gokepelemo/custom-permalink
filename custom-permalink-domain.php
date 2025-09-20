@@ -3,7 +3,7 @@
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
 Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible with relative URLs support.
-Version: 1.3.3
+Version: 1.3.5
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -44,9 +44,25 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-cpd-url-transformer.php
 require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
 
 /**
- * Custom Permalink Domain Plugin
+ * Main plugin class for Custom Permalink Domain
  * 
- * PERFORMANCE OPTIMIZATIONS (v1.3.3):
+ * Manages custom permalink domain functionality for WordPress sites and multisite networks.
+ * Provides comprehensive URL transformation with support for:
+ * - Custom domain substitution for all content types
+ * - Protocol-relative URL conversion
+ * - Network-level override capabilities for multisite
+ * - Caching and performance optimizations
+ * - SEO plugin integration (Yoast, RankMath, SEO Framework)
+ * - WordPress core filter integration
+ * - Advanced admin interfaces with bulk operations
+ * 
+ * Architecture:
+ * - Decomposed functionality into specialized components (Options, Cache, URL Transformer)
+ * - Extensive caching to minimize database calls
+ * - Context-aware filter registration (admin vs frontend)
+ * - Sophisticated inheritance model for multisite environments
+ * 
+ * Performance Enhancements in v1.3.4:
  * - Consolidated database calls using caching properties
  * - Enhanced admin context checking with static caching
  * - Reduced redundant get_site_option() calls in admin pages
@@ -54,8 +70,12 @@ require_once plugin_dir_path(__FILE__) . 'multisite-utils.php';
  * - Improved JavaScript compression and error handling
  * - Better memory usage in admin script loading
  * - Consolidated network settings validation
+ * 
+ * @package CustomPermalinkDomain
+ * @version 1.3.4
+ * @author  Your Name
+ * @since   1.0.0
  */
-
 class CustomPermalinkDomain {
     
     /**
@@ -94,6 +114,38 @@ class CustomPermalinkDomain {
      */
     private $is_network_admin = false;
     
+    /**
+     * Content types cache
+     * @var array|null
+     */
+    private $content_types_cache = null;
+    
+    /**
+     * Custom domain cache
+     * @var string|null
+     */
+    private $custom_domain_cache = null;
+    
+    /**
+     * Network settings cache
+     * @var array|null
+     */
+    private $network_settings_cache = null;
+    
+    /**
+     * Relative URLs cache
+     * @var array|null
+     */
+    private $relative_urls_cache = null;
+    
+    /**
+     * Initialize the plugin
+     * 
+     * Sets up component dependencies, hooks into WordPress actions,
+     * and configures admin and frontend functionality based on environment.
+     * 
+     * @since 1.0.0
+     */
     public function __construct() {
         // Initialize components
         $this->options = new CPD_Options_Manager();
@@ -129,7 +181,14 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Register frontend-only filters (SEO, meta tags, etc.)
+     * Register frontend-only filters for SEO and meta tags
+     * 
+     * Conditionally registers URL transformation filters for frontend pages only.
+     * Includes support for major SEO plugins (Yoast, RankMath, SEO Framework)
+     * and WordPress core URL functions.
+     * 
+     * @since 1.0.0
+     * @return void
      */
     private function register_frontend_filters() {
         // Only add frontend filters if not in admin and we have a custom domain
@@ -153,6 +212,13 @@ class CustomPermalinkDomain {
     
     /**
      * Register permalink filters based on configuration
+     * 
+     * Conditionally registers URL transformation filters for different content types
+     * based on the plugin's content type settings. Includes posts, pages, categories,
+     * tags, authors, attachments, and various WordPress link types.
+     * 
+     * @since 1.0.0
+     * @return void
      */
     private function register_permalink_filters() {
         $custom_domain = $this->get_custom_domain();
@@ -245,13 +311,30 @@ class CustomPermalinkDomain {
         add_filter('algolia_term_record', array($this->url_transformer, 'transform_algolia_term_permalink'), 10, 2);
     }
     
+    /**
+     * Initialize plugin after WordPress is fully loaded
+     * 
+     * Handles late initialization tasks that require WordPress core to be ready,
+     * including loading translation files and setting up locale-specific functionality.
+     * 
+     * @since 1.0.0
+     * @hook init
+     * @return void
+     */
     public function init() {
         // Load text domain for translations
         load_plugin_textdomain('custom-permalink-domain', false, dirname(plugin_basename(__FILE__)) . '/languages');
     }
     
     /**
-     * Get custom domain with caching to reduce database calls
+     * Get the custom domain setting with caching
+     * 
+     * Retrieves the custom domain from either network settings (if override is enabled)
+     * or individual site settings. Results are cached to reduce database calls.
+     * In multisite environments, network settings take precedence when override is enabled.
+     * 
+     * @since 1.0.0
+     * @return string The custom domain URL or empty string if not set
      */
     private function get_custom_domain() {
         if ($this->custom_domain_cache !== null) {
@@ -273,7 +356,15 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Get content types with caching
+     * Get content types configuration with caching
+     * 
+     * Retrieves which content types (posts, pages, categories, etc.) should have
+     * their URLs transformed. Results are cached to improve performance.
+     * Defaults to enabling all supported content types if no configuration exists.
+     * 
+     * @since 1.0.0
+     * @return array Associative array of content type enablement flags
+     *               Format: ['posts' => 1, 'pages' => 1, 'categories' => 1, ...]
      */
     private function get_content_types() {
         if ($this->content_types_cache !== null) {
@@ -293,7 +384,17 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Get network settings with caching
+     * Get network-level settings with caching
+     * 
+     * Retrieves network-wide configuration settings for multisite installations.
+     * Returns default disabled state for single-site installations.
+     * Results are cached to reduce database queries on network options.
+     * 
+     * @since 1.0.0
+     * @return array Network settings containing:
+     *               - 'enabled' (bool): Whether network-level domain is enabled
+     *               - 'domain' (string): Network-level custom domain
+     *               - 'override' (bool): Whether to override individual site settings
      */
     private function get_network_settings() {
         if (!is_multisite()) {
@@ -315,6 +416,15 @@ class CustomPermalinkDomain {
     
     /**
      * Get relative URLs settings with caching
+     * 
+     * Retrieves relative URL configuration, checking network overrides first in multisite
+     * environments, then falling back to individual site settings.
+     * Results are cached to improve performance and include source information.
+     * 
+     * @since 1.0.0
+     * @return array Relative URLs settings containing:
+     *               - 'enabled' (bool): Whether relative URLs are enabled
+     *               - 'source' (string): Source of setting ('network_override' or 'site')
      */
     private function get_relative_urls_settings() {
         if ($this->relative_urls_cache !== null) {
@@ -346,7 +456,14 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Check if we're in an admin context (optimized with static caching)
+     * Check if current request is in an admin context
+     * 
+     * Determines if the current request is happening in WordPress admin, AJAX,
+     * cron, or admin-initiated REST API calls. Uses static caching to avoid
+     * repeated calculations during a single request.
+     * 
+     * @since 1.0.0
+     * @return bool True if in admin context, false otherwise
      */
     private function is_admin_context() {
         static $is_admin_context = null;
@@ -364,7 +481,14 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Clear internal caches when options are updated
+     * Clear all internal caches when options are updated
+     * 
+     * Resets all cached configuration values and purges external caches
+     * to ensure fresh data is loaded after settings changes.
+     * Should be called whenever plugin options are modified.
+     * 
+     * @since 1.0.0
+     * @return void
      */
     public function clear_cache() {
         $this->custom_domain_cache = null;
@@ -378,6 +502,14 @@ class CustomPermalinkDomain {
     
     /**
      * Convert absolute URL to protocol-relative URL
+     * 
+     * Converts HTTP/HTTPS URLs to protocol-relative format (//domain.com/path)
+     * if relative URLs are enabled in settings. This helps avoid mixed content
+     * warnings when switching between HTTP and HTTPS.
+     * 
+     * @since 1.0.0
+     * @param string $url The absolute URL to convert
+     * @return string The protocol-relative URL or original URL if conversion disabled
      */
     private function make_url_relative($url) {
         if (empty($url)) {
@@ -398,7 +530,15 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Apply relative URL conversion to a URL after domain change
+     * Apply relative URL conversion to a URL after domain transformation
+     * 
+     * Performs a two-step URL transformation: first applies custom domain
+     * transformation, then converts to protocol-relative format if enabled.
+     * This is the main method for transforming URLs throughout the site.
+     * 
+     * @since 1.0.0
+     * @param string $url The original URL to transform
+     * @return string The transformed URL (domain changed and optionally made relative)
      */
     private function apply_relative_url_conversion($url) {
         // First apply custom domain change if needed
@@ -410,7 +550,15 @@ class CustomPermalinkDomain {
     
     
     /**
-     * Show admin notices
+     * Display admin notices for plugin status
+     * 
+     * Shows contextual notices on the plugin settings page to inform users
+     * about configuration status. Only displays on the plugin's admin page
+     * to avoid notice pollution.
+     * 
+     * @since 1.0.0
+     * @hook admin_notices
+     * @return void
      */
     public function admin_notices() {
         // Check if we're on the right page - safer check for WordPress 6.9+
@@ -845,6 +993,16 @@ class CustomPermalinkDomain {
     /**
      * Add admin menu page
      */
+    /**
+     * Add plugin settings page to WordPress admin menu
+     * 
+     * Registers the plugin's settings page under Settings > Permalink Domain
+     * in the WordPress admin. Requires 'manage_options' capability.
+     * 
+     * @since 1.0.0
+     * @hook admin_menu
+     * @return void
+     */
     public function add_admin_menu() {
         add_options_page(
             __('Custom Permalink Domain Settings', 'custom-permalink-domain'),
@@ -856,7 +1014,14 @@ class CustomPermalinkDomain {
     }
     
     /**
-     * Add network admin menu page
+     * Add network admin menu page for multisite installations
+     * 
+     * Registers the plugin's network settings page under Network Settings
+     * for multisite WordPress installations. Requires 'manage_network_options' capability.
+     * 
+     * @since 1.0.0
+     * @hook network_admin_menu
+     * @return void
      */
     public function add_network_admin_menu() {
         add_submenu_page(

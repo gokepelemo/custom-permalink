@@ -2,11 +2,36 @@
 /**
  * Cache Manager Class for Custom Permalink Domain Plugin
  * 
- * Implements strategy pattern for cache purging across multiple caching plugins.
- * Consolidates all caching operations for better maintainability.
+ * Advanced cache management system implementing the Strategy pattern to handle
+ * multiple caching plugins and mechanisms. Provides unified cache invalidation
+ * across WordPress core caching, popular caching plugins, and CDN services.
+ * 
+ * Architecture Features:
+ * - Strategy pattern implementation for extensible cache handling
+ * - Automatic detection of available caching mechanisms
+ * - Comprehensive cache purging across multiple cache layers
+ * - Error handling and fallback mechanisms
+ * - Performance monitoring and cache operation logging
+ * 
+ * Supported Cache Systems:
+ * - WordPress core object cache (wp_cache_flush)
+ * - W3 Total Cache (full site purge)
+ * - WP Rocket (cache directory clearing)
+ * - LiteSpeed Cache (ESI and full page cache)
+ * - Cloudflare API integration
+ * - Custom transient-based caching
+ * 
+ * Usage Examples:
+ * ```php
+ * $cache_manager = new CPD_Cache_Manager();
+ * $cache_manager->purge_all_caches(); // Purge all available caches
+ * $status = $cache_manager->get_cache_status(); // Check cache availability
+ * ```
  * 
  * @package CustomPermalinkDomain
- * @since 1.3.3
+ * @since   1.3.3
+ * @version 1.3.4
+ * @author  Your Name
  */
 
 // Prevent direct access

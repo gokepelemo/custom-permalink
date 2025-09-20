@@ -2,11 +2,35 @@
 /**
  * Options Manager Class for Custom Permalink Domain Plugin
  * 
- * Handles all option retrieval and caching with batching optimization
- * to reduce redundant database queries.
+ * Centralized management of plugin options with intelligent caching and batching
+ * optimizations to minimize database queries. Handles both individual site and
+ * network-level settings for multisite installations.
+ * 
+ * Key Features:
+ * - Memory-based caching for all configuration values
+ * - Batch loading of network options to reduce database calls
+ * - Intelligent cache invalidation on option updates
+ * - Fallback mechanisms for missing or corrupt settings
+ * - Multisite-aware option hierarchies (network > site)
+ * 
+ * Performance Optimizations:
+ * - Single database queries with multi-option batching
+ * - Static property caching prevents redundant option retrievals
+ * - Lazy loading pattern for rarely-accessed settings
+ * - Network option consolidation reduces multisite overhead
+ * 
+ * Usage Examples:
+ * ```php
+ * $options = new CPD_Options_Manager();
+ * $domain = $options->get_custom_domain();
+ * $types = $options->get_content_types();
+ * $network = $options->get_network_settings();
+ * ```
  * 
  * @package CustomPermalinkDomain
- * @since 1.3.3
+ * @since   1.3.3
+ * @version 1.3.4
+ * @author  Your Name
  */
 
 // Prevent direct access
@@ -59,9 +83,22 @@ class CPD_Options_Manager {
     private $network_options_batch = null;
     
     /**
-     * Get custom domain with caching
+     * Get custom domain with memory caching
      * 
-     * @return string Custom domain or empty string
+     * Retrieves the custom domain setting for the current site.
+     * Uses in-memory caching to prevent redundant database queries
+     * within a single request lifecycle.
+     * 
+     * @since 1.3.3
+     * @return string Custom domain URL or empty string if not configured
+     * 
+     * @example
+     * ```php
+     * $domain = $options->get_custom_domain();
+     * if (!empty($domain)) {
+     *     echo "Custom domain: " . $domain;
+     * }
+     * ```
      */
     public function get_custom_domain() {
         if ($this->custom_domain_cache === null) {
@@ -71,9 +108,23 @@ class CPD_Options_Manager {
     }
     
     /**
-     * Get content types with caching
+     * Get content types configuration with memory caching
      * 
-     * @return array Content types configuration
+     * Retrieves which content types (posts, pages, categories, etc.) should
+     * have their URLs transformed. Provides sensible defaults if no configuration
+     * exists. Uses in-memory caching for performance.
+     * 
+     * @since 1.3.3
+     * @return array Associative array of content type enablement flags
+     *               Format: ['posts' => 1, 'pages' => 1, 'categories' => 1, ...]
+     * 
+     * @example
+     * ```php
+     * $types = $options->get_content_types();
+     * if (!empty($types['posts'])) {
+     *     // Transform post permalinks
+     * }
+     * ```
      */
     public function get_content_types() {
         if ($this->content_types_cache === null) {

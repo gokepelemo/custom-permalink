@@ -2,7 +2,41 @@
 /**
  * Multisite Utility Class for Custom Permalink Domain Plugin
  * 
- * Provides helper methods for managing multisite networks
+ * Comprehensive multisite management utilities for WordPress network installations.
+ * Provides bulk operations, site discovery, and network-wide configuration management
+ * with proper permission handling and data integrity protection.
+ * 
+ * Key Features:
+ * - Site discovery and custom domain enumeration
+ * - Bulk domain application across network sites
+ * - Network-wide settings management and validation
+ * - Site-specific configuration retrieval and updates
+ * - Permission-aware operations with security checks
+ * - Data preservation and cleanup utilities
+ * 
+ * Security Features:
+ * - Capability checks for all network operations
+ * - Safe site switching with proper restoration
+ * - Input validation and sanitization
+ * - Atomic operations with rollback capabilities
+ * 
+ * Performance Considerations:
+ * - Efficient site enumeration with minimal memory usage
+ * - Batched database operations for bulk changes
+ * - Optimized site switching patterns
+ * - Cache-aware operations
+ * 
+ * Usage Examples:
+ * ```php
+ * $multisite = new CustomPermalinkDomainMultisite();
+ * $sites = $multisite->get_sites_with_custom_domains();
+ * $multisite->apply_network_domain_to_all_sites('https://cdn.network.com');
+ * ```
+ * 
+ * @package CustomPermalinkDomain
+ * @since   1.0.0
+ * @version 1.3.4
+ * @author  Your Name
  */
 
 if (!defined('ABSPATH')) {
@@ -15,6 +49,27 @@ class CustomPermalinkDomainMultisite {
     
     /**
      * Get all sites with custom domains configured
+     * 
+     * Scans the entire multisite network to identify sites that have
+     * custom permalink domains configured. Returns detailed information
+     * about each site including domain mappings and URLs.
+     * 
+     * @since 1.0.0
+     * @return array Array of site data containing:
+     *               - 'site_id' (int): Blog ID of the site
+     *               - 'domain' (string): WordPress site domain
+     *               - 'path' (string): WordPress site path
+     *               - 'custom_domain' (string): Configured custom domain
+     *               - 'site_url' (string): Full site URL
+     * 
+     * @example
+     * ```php
+     * $multisite = new CustomPermalinkDomainMultisite();
+     * $sites = $multisite->get_sites_with_custom_domains();
+     * foreach ($sites as $site) {
+     *     echo "Site {$site['site_id']}: {$site['custom_domain']}\n";
+     * }
+     * ```
      */
     public function get_sites_with_custom_domains() {
         if (!is_multisite()) {
