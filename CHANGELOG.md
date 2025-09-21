@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7] - 2025-09-21
+
+### Fixed
+
+- **Critical REST API Error**: Fixed fatal error in `transform_url_for_rest_response()` method that was causing REST API endpoints to fail
+- **Method Resolution**: Changed from undefined `get_current_domain()` to WordPress `get_site_url()` function
+- **API Stability**: Ensures REST API endpoints work properly with the plugin enabled
+- **Code Consistency**: Maintains alignment with existing domain transformation logic
+
+## [1.3.6] - 2025-09-21
+
+### Added
+
+- **Enhanced REST API Filtering**: Fixed `guid.rendered` and `link` attributes not using custom permalinks in REST API responses
+- **Comprehensive API Support**: Added filtering for posts, pages, attachments, and automatic custom post type support
+- **Dedicated Response Handler**: Created `transform_url_for_rest_response()` method for proper API response handling
+
+### Enhanced
+
+- **Admin Interface Layout**: Improved Test URL Changes button alignment and mobile responsiveness
+- **Code Architecture**: Resolved inconsistent `is_admin_context()` methods between main class and URL transformer
+- **URL Protection**: Fixed conflicting wp-json URL protection mechanisms while maintaining GraphQL compatibility
+
+### Fixed
+
+- **Button Alignment**: Enhanced mobile responsiveness with consistent form spacing and proper button container consistency
+- **API Consistency**: Proper separation of base REST URLs vs. response data handling across all endpoints
+
 ## [1.3.5] - 2025-09-21
 
 ### Added
