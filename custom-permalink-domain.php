@@ -1742,9 +1742,9 @@ class CustomPermalinkDomain {
 
         $custom_domain = $this->get_custom_domain();
         if (!empty($custom_domain)) {
-            $current_domain = $this->get_current_domain();
-            if (!empty($current_domain)) {
-                $url = str_replace($current_domain, $custom_domain, $url);
+            $site_url = get_site_url();
+            if (!empty($site_url)) {
+                $url = str_replace($site_url, $custom_domain, $url);
             }
         }
 
