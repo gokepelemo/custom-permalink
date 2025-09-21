@@ -36,7 +36,7 @@
  * Disabled        | Disabled (0) | Delete (explicit)
  * ```
  * 
- * Note: As of v1.3.6, implements enhanced network preservation settings
+ * Note: As of v1.3.7, implements enhanced network preservation settings
  * with site-level opt-out capability for granular control.
  * 
  * @package CustomPermalinkDomain
