@@ -9,10 +9,6 @@ release.sh
 # macOS
 .DS_Store
 
-# IDE files
-.vscode/
-.idea/
-
 # Temporary files
 *.tmp
 *.bak
@@ -22,3 +18,9 @@ node_modules/
 
 # Logs
 *.log
+
+# AI/IDE instructions and metadata
+*.ai
+.vscode/
+.idea/
+CLAUDE.md

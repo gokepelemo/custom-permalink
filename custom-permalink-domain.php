@@ -280,6 +280,14 @@ class CustomPermalinkDomain {
         // REST API - special handling to avoid CORS issues with WP GraphQL and admin contexts
         // Uses dedicated function with admin context checks
         add_filter('rest_url', array($this->url_transformer, 'transform_rest_url'));
+
+        // REST API response data filtering for posts and other content types
+        add_filter('rest_prepare_post', array($this, 'transform_rest_post_data'), 10, 3);
+        add_filter('rest_prepare_page', array($this, 'transform_rest_post_data'), 10, 3);
+        add_filter('rest_prepare_attachment', array($this, 'transform_rest_post_data'), 10, 3);
+
+        // Add filters for any custom post types that might be registered
+        add_action('rest_api_init', array($this, 'register_rest_filters_for_custom_post_types'));
         
         // Comments
         add_filter('get_comments_link', array($this->url_transformer, 'transform_url'));
@@ -974,9 +982,8 @@ class CustomPermalinkDomain {
                         <div class="card-body">
                             <p>Network administration resources:</p>
                             <ul style="margin: 10px 0; padding-left: 20px;">
-                                <li><a href="#" target="_blank">Network Setup Guide</a></li>
-                                <li><a href="#" target="_blank">Multisite Best Practices</a></li>
-                                <li><a href="#" target="_blank">Troubleshooting Network Issues</a></li>
+                                <li><a href="https://wpengine.com/support/what-is-wordpress-multisite/" target="_blank">Network Setup Guide</a></li>
+                                <li><a href="https://wpengine.com/wp-content/uploads/2017/02/White-Paper-Dos-Donts-WordPress-Multisite.pdf" target="_blank">Multisite Best Practices</a></li>
                             </ul>
                             
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-top: 15px;">
@@ -1681,7 +1688,86 @@ class CustomPermalinkDomain {
         
         return $this->change_permalink_domain($url);
     }
-    
+
+    /**
+     * Transform REST API post data to use custom permalinks
+     * Handles guid.rendered and link attributes in REST responses
+     *
+     * @param WP_REST_Response $response The response object
+     * @param WP_Post $post Post object
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response Modified response
+     */
+    public function transform_rest_post_data($response, $post, $request) {
+        // Don't rewrite in admin contexts to prevent CORS issues
+        if ($this->is_admin_context()) {
+            return $response;
+        }
+
+        // Don't rewrite if the request is from wp-admin
+        if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], '/wp-admin') !== false) {
+            return $response;
+        }
+
+        $data = $response->get_data();
+
+        // Transform the 'link' attribute (post permalink)
+        if (isset($data['link'])) {
+            $data['link'] = $this->transform_url_for_rest_response($data['link']);
+        }
+
+        // Transform the 'guid.rendered' attribute
+        if (isset($data['guid']['rendered'])) {
+            $data['guid']['rendered'] = $this->transform_url_for_rest_response($data['guid']['rendered']);
+        }
+
+        $response->set_data($data);
+        return $response;
+    }
+
+    /**
+     * Transform URL specifically for REST API responses
+     * Bypasses wp-json protection to allow proper URL transformation in response data
+     *
+     * @param string $url URL to transform
+     * @return string Transformed URL
+     */
+    private function transform_url_for_rest_response($url) {
+        // Don't rewrite wp-admin or login URLs
+        if (strpos($url, '/wp-admin') !== false ||
+            strpos($url, 'wp-login') !== false ||
+            strpos($url, 'wp-register') !== false) {
+            return $url;
+        }
+
+        $custom_domain = $this->get_custom_domain();
+        if (!empty($custom_domain)) {
+            $current_domain = $this->get_current_domain();
+            if (!empty($current_domain)) {
+                $url = str_replace($current_domain, $custom_domain, $url);
+            }
+        }
+
+        // Apply relative URL conversion if enabled
+        return $this->make_url_relative($url);
+    }
+
+    /**
+     * Register REST API filters for custom post types
+     * Called during rest_api_init to catch all registered post types
+     */
+    public function register_rest_filters_for_custom_post_types() {
+        $post_types = get_post_types(array('public' => true, '_builtin' => false), 'names');
+
+        foreach ($post_types as $post_type) {
+            // Only add filter if the post type supports REST API
+            if (post_type_supports($post_type, 'rest-api') ||
+                (function_exists('rest_get_route_for_post_type_items') && rest_get_route_for_post_type_items($post_type))) {
+                add_filter("rest_prepare_{$post_type}", array($this, 'transform_rest_post_data'), 10, 3);
+            }
+        }
+    }
+
     /**
      * Change permalink domain for indexing contexts (like Algolia)
      * This allows search indexers to get the correct custom permalinks
@@ -1922,7 +2008,7 @@ class CustomPermalinkDomain {
      * Get admin CSS (compressed)
      */
     private function get_admin_css() {
-        return ".url-test-results{margin-top:20px;margin-bottom:20px;border:1px solid #ddd;padding:15px;background:#f9f9f9;border-radius:4px}.url-comparison{margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee}.url-comparison:last-child{border-bottom:none;margin-bottom:0}.url-comparison h5{margin:0 0 10px 0;color:#333;font-weight:600}.url-before,.url-after{font-family:monospace;font-size:12px;margin:5px 0;word-break:break-all;padding:8px;border-radius:3px}.url-before{color:#d54e21;background:#fff;border-left:3px solid #d54e21}.url-after{color:#46b450;background:#fff;border-left:3px solid #46b450}.url-test-results .error{color:#d63638;background:#fff2f2;border:1px solid #d63638;padding:10px;border-radius:3px}#test-urls-btn{margin-top:10px}";
+        return ".url-test-results{margin-top:20px;margin-bottom:20px;border:1px solid #ddd;padding:15px;background:#f9f9f9;border-radius:4px}.url-comparison{margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee}.url-comparison:last-child{border-bottom:none;margin-bottom:0}.url-comparison h5{margin:0 0 10px 0;color:#333;font-weight:600}.url-before,.url-after{font-family:monospace;font-size:12px;margin:5px 0;word-break:break-all;padding:8px;border-radius:3px}.url-before{color:#d54e21;background:#fff;border-left:3px solid #d54e21}.url-after{color:#46b450;background:#fff;border-left:3px solid #46b450}.url-test-results .error{color:#d63638;background:#fff2f2;border:1px solid #d63638;padding:10px;border-radius:3px}";
     }
     
     /**

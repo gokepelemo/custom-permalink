@@ -63,11 +63,12 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
 - **Site Statistics**: Monitor which sites have custom domains configured
 
 ### Admin Interface
-- **Intuitive Settings Page**: Easy-to-use admin interface
+- **Intuitive Settings Page**: Easy-to-use admin interface with responsive design
 - **URL Type Selection**: Choose which types of URLs to modify
 - **Real-time Testing**: Test URL transformations before applying
 - **Visual Feedback**: See before/after URL comparisons
 - **Validation**: Input validation and error handling
+- **Consistent Layout**: Properly aligned buttons and form elements across all screen sizes
 
 ### Security & Performance
 

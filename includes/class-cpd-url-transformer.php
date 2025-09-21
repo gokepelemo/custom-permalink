@@ -169,38 +169,47 @@ class CPD_URL_Transformer {
     
     /**
      * Check if URL should not be transformed
-     * 
+     * wp-json URLs are handled separately via dedicated transform_rest_url method
+     *
      * @param string $url URL to check
      * @return bool True if URL is protected
      */
     private function is_protected_url($url) {
         $protected_patterns = [
             '/wp-admin',
-            '/wp-json/',
             'wp-login',
             'wp-register'
         ];
-        
+
         foreach ($protected_patterns as $pattern) {
             if (strpos($url, $pattern) !== false) {
                 return true;
             }
         }
-        
+
         return false;
     }
     
     /**
      * Check if current context is admin
-     * 
+     * Enhanced to match main class logic for GraphQL compatibility
+     *
      * @return bool True if admin context
      */
     private function is_admin_context() {
-        return is_admin() || 
-               (defined('DOING_AJAX') && DOING_AJAX) || 
-               (defined('DOING_CRON') && DOING_CRON) ||
-               (defined('REST_REQUEST') && REST_REQUEST) ||
-               (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/wp-admin') !== false);
+        static $is_admin_context = null;
+
+        if ($is_admin_context === null) {
+            $is_admin_context = is_admin() ||
+                               (defined('DOING_AJAX') && DOING_AJAX) ||
+                               (defined('DOING_CRON') && DOING_CRON) ||
+                               (defined('REST_REQUEST') && REST_REQUEST &&
+                                isset($_SERVER['HTTP_REFERER']) &&
+                                strpos($_SERVER['HTTP_REFERER'], '/wp-admin') !== false) ||
+                               (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/wp-admin') !== false);
+        }
+
+        return $is_admin_context;
     }
     
     /**
@@ -285,11 +294,6 @@ class CPD_URL_Transformer {
     public function transform_site_url($url, $path, $scheme, $blog_id) {
         // Only change specific paths for frontend
         if ($this->is_admin_context()) {
-            return $url;
-        }
-        
-        // Don't rewrite wp-json URLs to prevent CORS issues
-        if (strpos($path, 'wp-json/') !== false) {
             return $url;
         }
         

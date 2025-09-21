@@ -301,6 +301,7 @@ Optimized CSS with reduced !important usage and better specificity
     margin-top: 20px;
     margin-bottom: 30px;
     padding: 0;
+    min-height: 36px; /* Ensure consistent container height */
 }
 
 .cpd-action-buttons input[type="submit"],
@@ -414,6 +415,25 @@ Optimized CSS with reduced !important usage and better specificity
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
     appearance: none !important;
+}
+
+/* Test URLs button specific alignment fix */
+#test-urls-btn {
+    margin-top: 0 !important; /* Override any inherited margin-top */
+    margin-bottom: 0 !important;
+    vertical-align: middle !important;
+}
+
+/* Additional layout improvements */
+.custom-permalink-domain .form-table td .cpd-action-buttons {
+    margin-top: 15px; /* Consistent spacing when buttons are inside table cells */
+    margin-bottom: 15px;
+}
+
+/* Ensure URL test results have proper spacing */
+#url-test-results {
+    margin-top: 15px !important;
+    clear: both; /* Prevent float issues */
 }
 
 /* Specific styling for primary and secondary buttons to ensure consistent appearance */
@@ -687,6 +707,12 @@ Optimized CSS with reduced !important usage and better specificity
         width: 100% !important;
         margin: 0 !important;
         display: flex !important;
+    }
+
+    /* Mobile-specific button alignment */
+    #test-urls-btn {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
     }
     
     .cpd-status-info {
