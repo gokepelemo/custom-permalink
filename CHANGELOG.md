@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Yoast SEO REST API Integration**: Fixed `yoast_head` property in REST API responses to use custom permalinks instead of original domain URLs
+- **Meta Tag URL Transformation**: Ensures canonical URLs, Open Graph tags, and Twitter Cards in Yoast head content use the correct custom domain
+
 ## [1.3.7] - 2025-09-21
 
 ### Fixed

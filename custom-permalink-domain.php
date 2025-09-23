@@ -197,6 +197,7 @@ class CustomPermalinkDomain {
             add_filter('wpseo_canonical', array($this->url_transformer, 'transform_url')); // Yoast SEO
             add_filter('wpseo_opengraph_url', array($this->url_transformer, 'transform_url')); // Yoast OG
             add_filter('wpseo_twitter_card_image', array($this->url_transformer, 'transform_url')); // Yoast Twitter
+            add_filter('wpseo_schema_graph', array($this, 'transform_yoast_schema_urls')); // Yoast JSON-LD structured data
             add_filter('the_seo_framework_canonical_url', array($this->url_transformer, 'transform_url')); // SEO Framework
             add_filter('rank_math/frontend/canonical', array($this->url_transformer, 'transform_url')); // RankMath
             
@@ -1721,6 +1722,16 @@ class CustomPermalinkDomain {
             $data['guid']['rendered'] = $this->transform_url_for_rest_response($data['guid']['rendered']);
         }
 
+        // Transform Yoast SEO head content (canonical URLs, Open Graph, Twitter Cards, etc.)
+        if (isset($data['yoast_head'])) {
+            $data['yoast_head'] = $this->transform_yoast_head_content($data['yoast_head']);
+        }
+
+        // Transform Yoast SEO head JSON content (structured data)
+        if (isset($data['yoast_head_json'])) {
+            $data['yoast_head_json'] = $this->transform_yoast_head_json($data['yoast_head_json']);
+        }
+
         $response->set_data($data);
         return $response;
     }
@@ -1933,7 +1944,180 @@ class CustomPermalinkDomain {
         
         return $content;
     }
-    
+
+    /**
+     * Transform URLs in Yoast SEO JSON-LD structured data
+     *
+     * This method processes the schema graph to replace any URLs that point to the
+     * original domain with the custom permalink domain. This ensures that all
+     * structured data in REST API responses uses the correct domain.
+     *
+     * @param array $data The Yoast schema graph data
+     * @return array Modified schema graph with transformed URLs
+     * @since 1.3.8
+     */
+    public function transform_yoast_schema_urls($data) {
+        $custom_domain = $this->get_custom_domain();
+        if (empty($custom_domain) || empty($data)) {
+            return $data;
+        }
+
+        $site_url = get_site_url();
+        $home_url = get_home_url();
+
+        // Recursively transform URLs in the schema data
+        return $this->transform_urls_in_array($data, $site_url, $home_url, $custom_domain);
+    }
+
+    /**
+     * Recursively transform URLs in an array structure
+     *
+     * @param mixed $data The data to transform (can be array, string, or other types)
+     * @param string $site_url Original site URL
+     * @param string $home_url Original home URL
+     * @param string $custom_domain Custom domain to replace with
+     * @return mixed Transformed data
+     */
+    private function transform_urls_in_array($data, $site_url, $home_url, $custom_domain) {
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                $data[$key] = $this->transform_urls_in_array($value, $site_url, $home_url, $custom_domain);
+            }
+        } elseif (is_string($data)) {
+            // Transform URLs in string values
+            $data = str_replace($site_url, $custom_domain, $data);
+            if ($home_url !== $site_url) {
+                $data = str_replace($home_url, $custom_domain, $data);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Transform URLs in Yoast SEO head content for REST API responses
+     *
+     * The yoast_head property contains HTML meta tags with URLs that need to be
+     * transformed to use the custom domain. This method processes the HTML content
+     * to replace any URLs pointing to the original domain.
+     *
+     * @param string $head_content The Yoast head HTML content
+     * @return string Modified head content with transformed URLs
+     * @since 1.3.8
+     */
+    private function transform_yoast_head_content($head_content) {
+        $custom_domain = $this->get_custom_domain();
+        if (empty($custom_domain) || empty($head_content)) {
+            return $head_content;
+        }
+
+        $site_url = get_site_url();
+        $home_url = get_home_url();
+
+        // Extract domain from site URL (remove protocol and path)
+        $site_domain = parse_url($site_url, PHP_URL_HOST);
+        $custom_domain_host = parse_url($custom_domain, PHP_URL_HOST);
+
+        if (!$site_domain || !$custom_domain_host) {
+            return $head_content;
+        }
+
+        // Replace all possible variations of the old domain with the new domain
+        // Handle different protocols and formats
+        $replacements = array(
+            'https://' . $site_domain => 'https://' . $custom_domain_host,
+            'http://' . $site_domain => 'http://' . $custom_domain_host,
+            '//' . $site_domain => '//' . $custom_domain_host,
+            $site_domain => $custom_domain_host,
+            // Also handle escaped versions for JSON-LD in HTML
+            'https:\\/\\/' . $site_domain => 'https:\\/\\/' . $custom_domain_host,
+            'http:\\/\\/' . $site_domain => 'http:\\/\\/' . $custom_domain_host,
+            '\\/\\/' . $site_domain => '\\/\\/' . $custom_domain_host,
+        );
+
+        $transformed_content = $head_content;
+        foreach ($replacements as $old => $new) {
+            $transformed_content = str_replace($old, $new, $transformed_content);
+        }
+
+        return $transformed_content;
+    }
+
+    /**
+     * Transform Yoast SEO head JSON content for REST API responses
+     *
+     * Handles the parsed JSON version of Yoast head content, transforming URLs
+     * in structured data (JSON-LD) to use the custom domain.
+     *
+     * @param array $head_json Parsed Yoast head JSON data
+     * @return array Modified JSON data with transformed URLs
+     * @since 1.3.8
+     */
+    private function transform_yoast_head_json($head_json) {
+        $custom_domain = $this->get_custom_domain();
+        if (empty($custom_domain) || empty($head_json)) {
+            return $head_json;
+        }
+
+        $site_url = get_site_url();
+        $home_url = get_home_url();
+
+        // Extract domain from site URL (remove protocol and path)
+        $site_domain = parse_url($site_url, PHP_URL_HOST);
+        $custom_domain_host = parse_url($custom_domain, PHP_URL_HOST);
+
+        if (!$site_domain || !$custom_domain_host) {
+            return $head_json;
+        }
+
+        // Recursively transform URLs in the JSON structure
+        return $this->transform_json_urls($head_json, $site_domain, $custom_domain_host);
+    }
+
+    /**
+     * Recursively transform URLs in JSON data structure
+     *
+     * @param mixed $data JSON data (array, object, or string)
+     * @param string $old_domain Old domain to replace
+     * @param string $new_domain New domain to use
+     * @return mixed Transformed data
+     */
+    private function transform_json_urls($data, $old_domain, $new_domain) {
+        if (is_string($data)) {
+            // Replace all possible variations of the old domain with the new domain
+            $replacements = array(
+                'https://' . $old_domain => 'https://' . $new_domain,
+                'http://' . $old_domain => 'http://' . $new_domain,
+                '//' . $old_domain => '//' . $new_domain,
+                $old_domain => $new_domain,
+                // Also handle escaped versions that might appear in JSON
+                'https:\\/\\/' . $old_domain => 'https:\\/\\/' . $new_domain,
+                'http:\\/\\/' . $old_domain => 'http:\\/\\/' . $new_domain,
+                '\\/\\/' . $old_domain => '\\/\\/' . $new_domain,
+            );
+
+            $transformed = $data;
+            foreach ($replacements as $old => $new) {
+                $transformed = str_replace($old, $new, $transformed);
+            }
+            return $transformed;
+        } elseif (is_array($data)) {
+            $result = array();
+            foreach ($data as $key => $value) {
+                $result[$key] = $this->transform_json_urls($value, $old_domain, $new_domain);
+            }
+            return $result;
+        } elseif (is_object($data)) {
+            $result = new stdClass();
+            foreach ($data as $key => $value) {
+                $result->$key = $this->transform_json_urls($value, $old_domain, $new_domain);
+            }
+            return $result;
+        }
+
+        return $data;
+    }
+
     /**
      * Enqueue admin scripts (optimized for memory usage)
      */
