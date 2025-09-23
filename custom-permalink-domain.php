@@ -1755,16 +1755,8 @@ class CustomPermalinkDomain {
             return $url;
         }
 
-        $custom_domain = $this->get_custom_domain();
-        if (!empty($custom_domain)) {
-            $site_url = get_site_url();
-            if (!empty($site_url)) {
-                $url = str_replace($site_url, $custom_domain, $url);
-            }
-        }
-
-        // Apply relative URL conversion if enabled
-        return $this->make_url_relative($url);
+        // Use the URL transformer's method for consistent transformation
+        return $this->url_transformer->transform_url($url, true);
     }
 
     /**
@@ -1966,36 +1958,40 @@ class CustomPermalinkDomain {
             return $data;
         }
 
-        $site_url = get_site_url();
-        $home_url = get_home_url();
-
-        // Recursively transform URLs in the schema data
-        return $this->transform_urls_in_array($data, $site_url, $home_url, $custom_domain);
+        // Recursively transform URLs in the schema data using the URL transformer
+        return $this->transform_urls_in_schema_array($data);
     }
 
     /**
-     * Recursively transform URLs in an array structure
+     * Recursively transform URLs in schema array using URL transformer
      *
      * @param mixed $data The data to transform (can be array, string, or other types)
-     * @param string $site_url Original site URL
-     * @param string $home_url Original home URL
-     * @param string $custom_domain Custom domain to replace with
      * @return mixed Transformed data
      */
-    private function transform_urls_in_array($data, $site_url, $home_url, $custom_domain) {
+    private function transform_urls_in_schema_array($data) {
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                $data[$key] = $this->transform_urls_in_array($value, $site_url, $home_url, $custom_domain);
+                $data[$key] = $this->transform_urls_in_schema_array($value);
             }
         } elseif (is_string($data)) {
-            // Transform URLs in string values
-            $data = str_replace($site_url, $custom_domain, $data);
-            if ($home_url !== $site_url) {
-                $data = str_replace($home_url, $custom_domain, $data);
+            // Check if this string looks like a URL and transform it
+            if ($this->is_url_like($data)) {
+                $data = $this->url_transformer->transform_url($data, true);
             }
         }
 
         return $data;
+    }
+
+    /**
+     * Check if a string looks like a URL that should be transformed
+     *
+     * @param string $string The string to check
+     * @return bool True if the string appears to be a URL
+     */
+    private function is_url_like($string) {
+        // Basic check for URLs - must contain domain-like patterns
+        return preg_match('/https?:\/\/[^\s<>"\']+/', $string) === 1;
     }
 
     /**
