@@ -151,14 +151,21 @@ class CPD_Options_Manager {
                 $this->network_settings_cache = array(
                     'enabled' => false,
                     'domain' => '',
-                    'override' => false
+                    'override' => false,
+                    'relative_urls' => array('enabled' => false, 'override' => false),
+                    'preserve_data' => false
                 );
             } else {
                 $batch = $this->get_network_options_batch();
                 $this->network_settings_cache = array(
                     'enabled' => $batch['network_enabled'],
                     'domain' => $batch['network_domain'],
-                    'override' => $batch['network_override']
+                    'override' => $batch['network_override'],
+                    'relative_urls' => array(
+                        'enabled' => $batch['network_relative_enabled'],
+                        'override' => $batch['network_relative_override']
+                    ),
+                    'preserve_data' => $batch['network_preserve_data']
                 );
             }
         }

@@ -107,6 +107,12 @@ class CustomPermalinkDomainMultisite {
         
         // Sanitize the domain
         $domain = esc_url_raw($domain);
+        
+        // Clean duplicate protocols
+        if (!empty($domain)) {
+            $domain = preg_replace('/^https?:\/\/https?:\/\//', 'https://', $domain);
+        }
+        
         if (empty($domain) || !filter_var($domain, FILTER_VALIDATE_URL)) {
             return false;
         }

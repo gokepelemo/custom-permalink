@@ -1265,6 +1265,10 @@ class CustomPermalinkDomain {
         
         // Validate and sanitize URL
         $url = esc_url_raw(trim($input));
+        
+        // Remove duplicate protocols to prevent issues like https://https://domain.com
+        $url = preg_replace('/^https?:\/\/https?:\/\//', 'https://', $url);
+        
         if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'])) {
             add_settings_error(
                 $this->option_name,
