@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.10] - 2025-09-22
+
 ### Fixed
 
 - **Yoast SEO REST API Integration**: Fixed `yoast_head` property in REST API responses to use custom permalinks instead of original domain URLs
