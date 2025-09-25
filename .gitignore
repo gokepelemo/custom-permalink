@@ -26,3 +26,9 @@ node_modules/
 .claude/
 CLAUDE.md.claude/
 CLAUDE.md
+
+# Unit Test files
+tests/
+phpunit.xml
+phpunit.xml.dist
+test-runner.php
