@@ -3,7 +3,7 @@
 Plugin Name: Custom Permalink Domain
 Plugin URI: https://wordpress.org/plugins/custom-permalink-domain/
 Description: Changes permalink domain without affecting site URLs with admin interface. Fully multisite compatible with relative URLs support.
-Version: 1.3.10
+Version: 1.4.0
 Author: Goke Pelemo
 Author URI: https://gokepelemo.com
 License: GPL v2 or later
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('CPD_VERSION')) {
-    define('CPD_VERSION', '1.3.10');
+    define('CPD_VERSION', '1.4.0');
 }
 if (!defined('CPD_PLUGIN_FILE')) {
     define('CPD_PLUGIN_FILE', __FILE__);
