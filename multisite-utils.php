@@ -54,7 +54,7 @@ class CustomPermalinkDomainMultisite {
      * custom permalink domains configured. Returns detailed information
      * about each site including domain mappings and URLs.
      * 
-     * @since 1.3.10
+     * @since 1.4.0
      * @return array Array of site data containing:
      *               - 'site_id' (int): Blog ID of the site
      *               - 'domain' (string): WordPress site domain

@@ -1541,7 +1541,7 @@ class CustomPermalinkDomain {
                                 
                                 <div class="cpd-status-item">
                                     <div class="cpd-status-label">Plugin Version</div>
-                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.3.10'); ?></div>
+                                    <div class="cpd-status-value"><?= esc_html(defined('CPD_VERSION') ? CPD_VERSION : '1.4.0'); ?></div>
                                 </div>
                                 
                                 <?php 
@@ -2132,7 +2132,7 @@ class CustomPermalinkDomain {
             'custom-permalink-domain-admin',
             plugin_dir_url(__FILE__) . 'admin-styles.css',
             array(),
-            '1.3.10'
+            '1.4.0'
         );
         
         wp_enqueue_script('jquery');
