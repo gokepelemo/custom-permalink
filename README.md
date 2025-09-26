@@ -117,9 +117,28 @@ This plugin filters URLs at multiple WordPress hook points to ensure comprehensi
 
 ## Installation
 
-1. Upload the `custom-permalink-domain.php` file to your WordPress `/wp-content/plugins/` directory
-2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Go to Settings → Permalink Domain to configure
+### Preferred Method: GitHub Release
+
+1. Download the latest release from [GitHub Releases](https://github.com/gokepelemo/custom-permalink-domain/releases)
+2. Upload the downloaded ZIP file to your WordPress `/wp-content/plugins/` directory
+3. Extract the ZIP file
+4. Activate the plugin through the 'Plugins' menu in WordPress
+
+### Alternative: Composer
+
+If you manage your WordPress plugins with Composer, you can install this plugin:
+
+```bash
+composer require gokepelemo/custom-permalink-domain
+```
+
+Then activate the plugin through the WordPress admin.
+
+### Manual Installation
+
+1. Download or clone the repository
+2. Upload the entire `custom-permalink-domain` directory to your WordPress `/wp-content/plugins/` directory
+3. Activate the plugin through the 'Plugins' menu in WordPress
 
 ## Configuration
 
