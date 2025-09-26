@@ -1,6 +1,6 @@
 {
     "name": "gokepelemo/custom-permalink-domain",
-    "description": "WordPress plugin for custom permalink domain management",
+    "description": "WordPress plugin that changes permalink domain without affecting site URLs on the admin interface. Fully multisite compatible.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "authors": [
@@ -9,6 +9,18 @@
             "email": "goke.pelemo@gmail.com"
         }
     ],
+    "keywords": [
+        "wordpress",
+        "plugin",
+        "permalink",
+        "domain",
+        "custom"
+    ],
+    "homepage": "https://github.com/gokepelemo/custom-permalink-domain",
+    "support": {
+        "issues": "https://github.com/gokepelemo/custom-permalink-domain/issues",
+        "source": "https://github.com/gokepelemo/custom-permalink-domain"
+    },
     "require": {
         "php": ">=7.4"
     },
@@ -46,5 +58,7 @@
     "config": {
         "optimize-autoloader": true,
         "sort-packages": true
-    }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

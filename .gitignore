@@ -32,3 +32,7 @@ tests/
 phpunit.xml
 phpunit.xml.dist
 test-runner.php
+
+# Composer dependencies
+composer.lock
+vendor/
